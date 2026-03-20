@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Cerca Elétrica</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f0a;
+    --panel: #0e1a0e;
+    --green: #00ff41;
+    --green-dim: #004d14;
+    --red: #ff2222;
+    --yellow: #ffd700;
+    --wire-ok: #c8e6ff;
+    --wire-broken: #ff4444;
+    --post: #1a1a2e;
+    --grass: #1a3a1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--green);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  header {
+    text-align: center;
+    padding: 20px;
+    position: relative;
+  }
+
+  header h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(18px, 3vw, 28px);
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px var(--green), 0 0 40px var(--green);
+  }
+
+  header p {
+    font-size: 11px;
+    color: #557755;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  .status-bar {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    margin: 10px 0 20px;
+    padding: 10px 30px;
+    border: 1px solid var(--green-dim);
+    border-radius: 2px;
+    background: rgba(0,255,65,0.03);
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .main-area {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 1100px;
+    padding: 0 20px;
+  }
+
+  .fence-container {
+    flex: 1;
+    position: relative;
+  }
+
+  .fence-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #557755;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .fence-canvas-wrap {
+    position: relative;
+    border: 1px solid var(--green-dim);
+    background: linear-gradient(135deg, #0a1a0a 0%, #0f2a0f 100%);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 0 30px rgba(0,255,65,0.08), inset 0 0 60px rgba(0,0,0,0.5);
+  }
+
+  canvas { display: block; }
+
+  .side-panel {
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .panel-box {
+    border: 1px solid var(--green-dim);
+    background: rgba(0,255,65,0.02);
+    border-radius: 2px;
+    padding: 16px;
+  }
+
+  .panel-box h3 {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #557755;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .wire-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .wire-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: rgba(0,255,65,0.03);
+    border-radius: 2px;
+    border-left: 3px solid var(--green);
+    font-size: 11px;
+    transition: all 0.3s;
+  }
+
+  .wire-item.broken {
+    border-left-color: var(--red);
+    background: rgba(255,34,34,0.08);
+    color: var(--red);
+    animation: flash-item 0.5s ease-in-out 3;
+  }
+
+  @keyframes flash-item {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .wire-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    background: var(--green-dim);
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+
+  .wire-badge.broken {
+    background: rgba(255,34,34,0.2);
+    color: var(--red);
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .metric {
+    text-align: center;
+    padding: 10px;
+    background: rgba(0,255,65,0.04);
+    border: 1px solid var(--green-dim);
+    border-radius: 2px;
+  }
+
+  .metric-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--green);
+    text-shadow: 0 0 10px var(--green);
+    line-height: 1;
+  }
+
+  .metric-val.alert { color: var(--red); text-shadow: 0 0 10px var(--red); }
+
+  .metric-lbl {
+    font-size: 9px;
+    color: #557755;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  .btn-reset {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .btn-reset:hover {
+    background: var(--green);
+    color: var(--bg);
+    box-shadow: 0 0 20px var(--green);
+  }
+
+  .log-list {
+    max-height: 150px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--green-dim) transparent;
+  }
+
+  .log-item {
+    font-size: 10px;
+    color: #557755;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(0,255,65,0.05);
+    display: flex;
+    gap: 8px;
+  }
+
+  .log-item.alert { color: var(--red); }
+  .log-item.ok { color: var(--green); }
+
+  .log-time { color: #334433; flex-shrink: 0; }
+
+  .instructions {
+    font-size: 11px;
+    color: #446644;
+    line-height: 1.8;
+    letter-spacing: 0.5px;
+  }
+
+  .instructions span {
+    color: var(--yellow);
+  }
+
+  .alert-overlay {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,34,34,0.15);
+    border: 1px solid var(--red);
+    color: var(--red);
+    padding: 12px 30px;
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border-radius: 2px;
+    z-index: 1000;
+    display: none;
+    animation: slide-in 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 30px rgba(255,34,34,0.3);
+  }
+
+  .alert-overlay.show { display: block; }
+
+  @keyframes slide-in {
+    from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="alert-overlay" id="alertOverlay">⚡ ROMPIMENTO DETECTADO!</div>
+
+<header>
+  <h1>⚡ Simulador de Cerca Elétrica</h1>
+  <p>CLIQUE NOS ARAMES PARA SIMULAR ROMPIMENTO · SISTEMA DE TESTE</p>
+</header>
+
+<div class="status-bar">
+  <div class="status-item">
+    <div class="dot" id="systemDot"></div>
+    <span id="systemStatus">SISTEMA ATIVO</span>
+  </div>
+  <div class="status-item">
+    <span>KV:</span>
+    <span id="kvVal" style="color:#ffd700; font-family:'Orbitron',monospace; font-size:14px; font-weight:700">7,5</span>
+  </div>
+  <div class="status-item">
+    <span>PULSOS/MIN:</span>
+    <span id="pulseVal" style="color:var(--green);">48</span>
+  </div>
+</div>
+
+<div class="main-area">
+  <div class="fence-container">
+    <div class="fence-label">▸ VISUALIZAÇÃO DA CERCA — VISTA ISOMÉTRICA</div>
+    <div class="fence-canvas-wrap">
+      <canvas id="fenceCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="side-panel">
+    <div class="panel-box">
+      <h3>⬡ Métricas</h3>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-val" id="mKV">7,5</div>
+          <div class="metric-lbl">KILOVOLTS</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" id="mPulse">48</div>
+          <div class="metric-lbl">PULSOS/MIN</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" id="mWires">12</div>
+          <div class="metric-lbl">ARAMES OK</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" id="mBroken">0</div>
+          <div class="metric-lbl">ROMPIDOS</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-box">
+      <h3>▸ Status dos Arames</h3>
+      <div class="wire-list" id="wireList"></div>
+    </div>
+
+    <div class="panel-box">
+      <h3>▸ Log de Eventos</h3>
+      <div class="log-list" id="logList"></div>
+    </div>
+
+    <div class="panel-box">
+      <h3>▸ Instruções</h3>
+      <div class="instructions">
+        <span>Clique</span> em qualquer arame da cerca para simular um rompimento.<br><br>
+        O <span>App de Controle</span> receberá o alerta automaticamente.<br><br>
+        Use <span>RESETAR</span> para restaurar todos os arames.
+      </div>
+    </div>
+
+    <button class="btn-reset" onclick="resetAll()">↺ RESETAR CERCA</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('fenceCanvas');
+const ctx = canvas.getContext('2d');
+
+// Responsive canvas
+function setCanvasSize() {
+  const wrap = canvas.parentElement;
+  const w = Math.min(wrap.offsetWidth, 720);
+  canvas.width = w;
+  canvas.height = Math.round(w * 0.80);
+}
+setCanvasSize();
+window.addEventListener('resize', () => { setCanvasSize(); buildWires(); draw(); });
+
+// ── Isometric helpers ────────────────────────────────────────
+const W = () => canvas.width;
+const H = () => canvas.height;
+
+function iso(gx, gy, gz) {
+  // gx, gy = ground coords (0-1), gz = height (0-1)
+  const cx = W() * 0.5;
+  const cy = H() * 0.82;  // mais baixo: era 0.72
+  const sx = W() * 0.40;  // um pouco mais estreito
+  const sy = H() * 0.20;  // era 0.22
+  const sh = H() * 0.44;  // altura dos postes menor: era 0.55
+
+  const x = cx + (gx - gy) * sx;
+  const y = cy - (gx + gy) * sy - gz * sh;
+  return { x, y };
+}
+
+// ── Fence geometry ────────────────────────────────────────────
+// Posts: 3x3 grid corners + midpoints
+const postGrid = [];
+for (let row = 0; row <= 2; row++) {
+  for (let col = 0; col <= 2; col++) {
+    postGrid.push({ gx: col * 0.5, gy: row * 0.5 });
+  }
+}
+
+// Perimeter posts only (remove interior)
+const perimeterIdx = [0,1,2, 3,5, 6,7,8]; // skip center 4
+const posts = perimeterIdx.map(i => postGrid[i]);
+
+// Wire segments: segments between adjacent perimeter posts
+// Sides: top(0-1-2), right(2-5-8), bottom(8-7-6), left(6-3-0)
+// Each side has 2 spans × 4 wire heights = 8 wires per side = 32 total... 
+// Simplified: 4 sides × 3 height levels = 12 wires
+
+const WIRE_HEIGHTS = [0.12, 0.28, 0.46, 0.62]; // relative heights
+
+// Define sides as sequences of post indices in postGrid (including center edges)
+const sideSegs = [
+  // Top side (gy=0): col 0->1->2
+  { name: 'Superior', pairs: [[{gx:0,gy:0},{gx:0.5,gy:0}],[{gx:0.5,gy:0},{gx:1,gy:0}]] },
+  // Right side (gx=1): gy 0->0.5->1
+  { name: 'Lateral Direito', pairs: [[{gx:1,gy:0},{gx:1,gy:0.5}],[{gx:1,gy:0.5},{gx:1,gy:1}]] },
+  // Bottom side (gy=1): col 1->0.5->0
+  { name: 'Inferior', pairs: [[{gx:1,gy:1},{gx:0.5,gy:1}],[{gx:0.5,gy:1},{gx:0,gy:1}]] },
+  // Left side (gx=0): gy 1->0.5->0
+  { name: 'Lateral Esquerdo', pairs: [[{gx:0,gy:1},{gx:0,gy:0.5}],[{gx:0,gy:0.5},{gx:0,gy:0}]] },
+];
+
+let wires = [];
+
+function buildWires() {
+  wires = [];
+  let id = 0;
+  sideSegs.forEach((side, si) => {
+    side.pairs.forEach((pair, pi) => {
+      WIRE_HEIGHTS.forEach((h, hi) => {
+        wires.push({
+          id: id++,
+          label: `${side.name} — Fio ${hi + 1}`,
+          side: si,
+          p1: pair[0], p2: pair[1],
+          height: h,
+          broken: false,
+          glitch: 0,
+        });
+      });
+    });
+  });
+}
+buildWires();
+
+// ── Drawing ───────────────────────────────────────────────────
+function drawGround() {
+  // Ground quad
+  const tl = iso(0, 0, 0), tr = iso(1, 0, 0);
+  const br = iso(1, 1, 0), bl = iso(0, 1, 0);
+
+  ctx.beginPath();
+  ctx.moveTo(tl.x, tl.y);
+  ctx.lineTo(tr.x, tr.y);
+  ctx.lineTo(br.x, br.y);
+  ctx.lineTo(bl.x, bl.y);
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(tl.x, tl.y, br.x, br.y);
+  grad.addColorStop(0, '#143214');
+  grad.addColorStop(0.5, '#1e4a1e');
+  grad.addColorStop(1, '#0e2a0e');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Grid lines on ground
+  ctx.strokeStyle = 'rgba(0,255,65,0.04)';
+  ctx.lineWidth = 0.5;
+  for (let t = 0; t <= 1; t += 0.25) {
+    const a = iso(t, 0, 0), b = iso(t, 1, 0);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    const c = iso(0, t, 0), d = iso(1, t, 0);
+    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
+  }
+}
+
+function drawPost(gx, gy) {
+  const base = iso(gx, gy, 0);
+  const top = iso(gx, gy, 0.75);
+  const W2 = Math.abs(iso(0,0,0).x - iso(0.05,0,0).x) * 0.4;
+
+  // Shadow
+  ctx.beginPath();
+  ctx.ellipse(base.x, base.y + 2, W2 * 2, W2 * 0.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fill();
+
+  // Post body
+  const grad = ctx.createLinearGradient(base.x - W2, 0, base.x + W2, 0);
+  grad.addColorStop(0, '#111');
+  grad.addColorStop(0.4, '#2a2a3a');
+  grad.addColorStop(1, '#0a0a12');
+  ctx.fillStyle = grad;
+
+  ctx.beginPath();
+  ctx.moveTo(base.x - W2, base.y);
+  ctx.lineTo(base.x + W2, base.y);
+  ctx.lineTo(top.x + W2, top.y);
+  ctx.lineTo(top.x - W2, top.y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(0,255,65,0.2)';
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+
+  // Top cap
+  ctx.beginPath();
+  ctx.ellipse(top.x, top.y, W2 * 1.1, W2 * 0.35, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fill();
+
+  // Insulators (yellow dots)
+  WIRE_HEIGHTS.forEach(h => {
+    const p = iso(gx, gy, h);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, W2 * 0.7, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd700';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, W2 * 0.35, 0, Math.PI * 2);
+    ctx.fillStyle = '#aa8800';
+    ctx.fill();
+  });
+}
+
+function drawWire(wire, hovered) {
+  const p1 = iso(wire.p1.gx, wire.p1.gy, wire.height);
+  const p2 = iso(wire.p2.gx, wire.p2.gy, wire.height);
+
+  if (wire.broken) {
+    // Broken wire effect: two halves with frayed ends
+    const mx = (p1.x + p2.x) / 2 + (Math.random() - 0.5) * 8;
+    const my = (p1.y + p2.y) / 2 + (Math.random() - 0.5) * 5 + 10;
+
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = '#ff2222';
+    ctx.strokeStyle = '#ff4444';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 2]);
+
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(mx, my); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(mx + 4, my + 3); ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
+
+    // Spark at break
+    if (Date.now() % 300 < 150) {
+      ctx.beginPath();
+      ctx.arc(mx, my, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffdd00';
+      ctx.fill();
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = '#ffaa00';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  } else {
+    // Normal wire with subtle sag
+    const sag = 3;
+    const cx = (p1.x + p2.x) / 2;
+    const cy = (p1.y + p2.y) / 2 + sag;
+
+    const glow = hovered ? 12 : 4;
+    ctx.shadowBlur = glow;
+    ctx.shadowColor = hovered ? '#ffffff' : '#aaddff';
+
+    const grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+    if (hovered) {
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.5, '#ffff88');
+      grad.addColorStop(1, '#ffffff');
+    } else {
+      grad.addColorStop(0, '#88aacc');
+      grad.addColorStop(0.5, '#c8e6ff');
+      grad.addColorStop(1, '#88aacc');
+    }
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = hovered ? 2.5 : 1.5;
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.quadraticCurveTo(cx, cy, p2.x, p2.y);
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+  }
+}
+
+// Hit-test bounding box for each wire
+function getWireBB(wire) {
+  const p1 = iso(wire.p1.gx, wire.p1.gy, wire.height);
+  const p2 = iso(wire.p2.gx, wire.p2.gy, wire.height);
+  const pad = 8;
+  return {
+    minX: Math.min(p1.x, p2.x) - pad,
+    maxX: Math.max(p1.x, p2.x) + pad,
+    minY: Math.min(p1.y, p2.y) - pad,
+    maxY: Math.max(p1.y, p2.y) + pad,
+  };
+}
+
+function pointNearSegment(px, py, wire) {
+  const p1 = iso(wire.p1.gx, wire.p1.gy, wire.height);
+  const p2 = iso(wire.p2.gx, wire.p2.gy, wire.height);
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return false;
+  let t = ((px - p1.x) * dx + (py - p1.y) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const nx = p1.x + t * dx - px;
+  const ny = p1.y + t * dy - py;
+  return Math.sqrt(nx * nx + ny * ny) < 10;
+}
+
+// Energizer box
+function drawEnergizerBox() {
+  const p = iso(0.08, 1, 0.01);
+  const w = W() * 0.06, h = H() * 0.07;
+  ctx.fillStyle = '#111';
+  ctx.strokeStyle = '#334433';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.rect(p.x - w / 2, p.y - h, w, h);
+  ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle = '#00ff41';
+  ctx.font = `bold ${Math.round(W() * 0.015)}px Orbitron`;
+  ctx.textAlign = 'center';
+  ctx.fillText('⚡', p.x, p.y - h * 0.3);
+
+  // Wire from box to first post
+  const post = iso(0, 1, WIRE_HEIGHTS[0]);
+  ctx.strokeStyle = '#ff4444';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y - h * 0.5);
+  ctx.lineTo(post.x, post.y);
+  ctx.stroke();
+}
+
+let hoveredWire = -1;
+let animFrame;
+
+function draw() {
+  ctx.clearRect(0, 0, W(), H());
+  drawGround();
+
+  // Draw wires behind posts
+  wires.forEach((w, i) => drawWire(w, i === hoveredWire));
+
+  // Draw posts
+  const postPos = [
+    {gx:0,gy:0},{gx:0.5,gy:0},{gx:1,gy:0},
+    {gx:0,gy:0.5},              {gx:1,gy:0.5},
+    {gx:0,gy:1},{gx:0.5,gy:1},{gx:1,gy:1},
+  ];
+  postPos.forEach(p => drawPost(p.gx, p.gy));
+
+  drawEnergizerBox();
+
+  // Hover cursor hint
+  if (hoveredWire >= 0 && !wires[hoveredWire].broken) {
+    ctx.fillStyle = 'rgba(255,220,0,0.85)';
+    ctx.font = `bold ${Math.round(W() * 0.018)}px Share Tech Mono`;
+    ctx.textAlign = 'center';
+    ctx.fillText('✂ CLIQUE PARA ROMPER', W() / 2, H() - 12);
+  }
+
+  animFrame = requestAnimationFrame(draw);
+}
+
+// ── Interaction ───────────────────────────────────────────────
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+  hoveredWire = -1;
+  for (let i = wires.length - 1; i >= 0; i--) {
+    if (!wires[i].broken && pointNearSegment(mx, my, wires[i])) {
+      hoveredWire = i;
+      break;
+    }
+  }
+  canvas.style.cursor = hoveredWire >= 0 ? 'crosshair' : 'default';
+});
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+  for (let i = wires.length - 1; i >= 0; i--) {
+    if (!wires[i].broken && pointNearSegment(mx, my, wires[i])) {
+      triggerBreak(i);
+      break;
+    }
+  }
+});
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  const mx = (touch.clientX - rect.left) * (canvas.width / rect.width);
+  const my = (touch.clientY - rect.top) * (canvas.height / rect.height);
+
+  for (let i = wires.length - 1; i >= 0; i--) {
+    if (!wires[i].broken && pointNearSegment(mx, my, wires[i])) {
+      triggerBreak(i);
+      break;
+    }
+  }
+}, { passive: false });
+
+// ── MQTT via HiveMQ público — funciona de qualquer lugar ──────
+// Broker público gratuito, sem cadastro, sem configuração.
+// ⚠ Canal público: qualquer pessoa com o mesmo TOPIC_ID lê as msgs.
+// Para uso privado, troque TOPIC_ID por um valor único seu.
+const MQTT_HOST  = 'broker.hivemq.com';
+const MQTT_PORT  = 8884;          // WSS (TLS) — funciona no GitHub Pages
+const TOPIC_ID   = 'cerca-eletrica-v1-demo'; // ← troque para algo único se quiser privacidade
+const TOPIC      = `cerca/${TOPIC_ID}/evento`;
+const CLIENT_ID  = `simulador-${Math.random().toString(36).slice(2, 9)}`;
+
+let mqttClient = null;
+let mqttOk     = false;
+
+function loadMqttLib(cb) {
+  if (window.mqtt) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
+  s.onload = cb;
+  s.onerror = () => addLog('Erro ao carregar lib MQTT', 'alert', new Date().toLocaleTimeString('pt-BR'));
+  document.head.appendChild(s);
+}
+
+function connectMQTT() {
+  loadMqttLib(() => {
+    const url = `wss://${MQTT_HOST}:${MQTT_PORT}/mqtt`;
+    mqttClient = mqtt.connect(url, {
+      clientId: CLIENT_ID,
+      clean: true,
+      reconnectPeriod: 3000,
+    });
+
+    mqttClient.on('connect', () => {
+      mqttOk = true;
+      addLog('MQTT conectado ✓ — pronto para enviar', 'ok', new Date().toLocaleTimeString('pt-BR'));
+      updateConnStatus(true);
+    });
+
+    mqttClient.on('disconnect', () => {
+      mqttOk = false;
+      updateConnStatus(false);
+    });
+
+    mqttClient.on('error', (e) => {
+      mqttOk = false;
+      updateConnStatus(false);
+      addLog('MQTT erro: ' + e.message, 'alert', new Date().toLocaleTimeString('pt-BR'));
+    });
+  });
+}
+
+function updateConnStatus(ok) {
+  const dot  = document.getElementById('systemDot');
+  const stat = document.getElementById('systemStatus');
+  if (!ok && wires.filter(w => w.broken).length === 0) {
+    dot.className = 'dot red';
+    stat.textContent = 'CONECTANDO AO BROKER...';
+    stat.style.color = 'var(--yellow)';
+  } else if (ok) {
+    dot.className = 'dot';
+    stat.textContent = 'SISTEMA ATIVO';
+    stat.style.color = '';
+  }
+}
+
+connectMQTT();
+
+// ── Break logic ───────────────────────────────────────────────
+function triggerBreak(idx) {
+  const wire = wires[idx];
+  wire.broken = true;
+  const now = new Date().toLocaleTimeString('pt-BR');
+  addLog(`ROMPIMENTO: ${wire.label}`, 'alert', now);
+  updateUI();
+  sendAlertToApp(wire);
+  showAlertOverlay();
+}
+
+function sendAlertToApp(wire) {
+  const event = {
+    type: 'wire_break',
+    wireLabel: wire.label,
+    time: new Date().toISOString(),
+    brokenCount: wires.filter(w => w.broken).length,
+  };
+  const msg = JSON.stringify(event);
+
+  // MQTT → qualquer dispositivo no mundo com o mesmo tópico
+  if (mqttOk && mqttClient) {
+    mqttClient.publish(TOPIC, msg, { qos: 1, retain: true });
+  } else {
+    addLog('MQTT offline — aguarde reconexão', 'alert', new Date().toLocaleTimeString('pt-BR'));
+  }
+
+  // localStorage → fallback mesma aba/mesmo navegador
+  localStorage.setItem('cerca_event', msg);
+  window.dispatchEvent(new StorageEvent('storage', { key: 'cerca_event', newValue: msg }));
+}
+
+function showAlertOverlay() {
+  const el = document.getElementById('alertOverlay');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function resetAll() {
+  wires.forEach(w => w.broken = false);
+  const now = new Date().toLocaleTimeString('pt-BR');
+  addLog('Sistema restaurado — todos os arames OK', 'ok', now);
+  updateUI();
+
+  const event = { type: 'reset', time: new Date().toISOString() };
+  const msg   = JSON.stringify(event);
+
+  if (mqttOk && mqttClient) {
+    mqttClient.publish(TOPIC, msg, { qos: 1, retain: true });
+  }
+
+  localStorage.setItem('cerca_event', msg);
+  window.dispatchEvent(new StorageEvent('storage', { key: 'cerca_event', newValue: msg }));
+}
+
+function updateUI() {
+  const broken = wires.filter(w => w.broken).length;
+  const ok = wires.length - broken;
+
+  document.getElementById('mWires').textContent = ok;
+  document.getElementById('mBroken').textContent = broken;
+  document.getElementById('mBroken').className = 'metric-val' + (broken > 0 ? ' alert' : '');
+
+  const dot = document.getElementById('systemDot');
+  const stat = document.getElementById('systemStatus');
+  if (broken > 0) {
+    dot.className = 'dot red';
+    stat.textContent = `ALERTA — ${broken} ROMPIMENTO(S)`;
+    stat.style.color = 'var(--red)';
+    document.getElementById('mPulse').textContent = '0';
+    document.getElementById('kvVal').textContent = '0,0';
+    document.getElementById('mKV').textContent = '0,0';
+    document.getElementById('mKV').className = 'metric-val alert';
+  } else {
+    dot.className = 'dot';
+    stat.textContent = 'SISTEMA ATIVO';
+    stat.style.color = '';
+    document.getElementById('mPulse').textContent = '48';
+    document.getElementById('kvVal').textContent = '7,5';
+    document.getElementById('mKV').textContent = '7,5';
+    document.getElementById('mKV').className = 'metric-val';
+  }
+
+  // Wire list
+  const list = document.getElementById('wireList');
+  // Show unique segment labels
+  const seen = new Set();
+  const segments = wires.filter(w => {
+    const key = w.label.split(' — ')[0];
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  list.innerHTML = '';
+  ['Superior','Lateral Direito','Inferior','Lateral Esquerdo'].forEach(side => {
+    const segWires = wires.filter(w => w.label.startsWith(side));
+    const brokenCount = segWires.filter(w => w.broken).length;
+    const isBroken = brokenCount > 0;
+    const div = document.createElement('div');
+    div.className = 'wire-item' + (isBroken ? ' broken' : '');
+    div.innerHTML = `<span>${side}</span><span class="wire-badge ${isBroken ? 'broken' : ''}">${isBroken ? `${brokenCount} ROMPIDO` : 'OK'}</span>`;
+    list.appendChild(div);
+  });
+}
+
+const logs = [];
+function addLog(msg, type, time) {
+  logs.unshift({ msg, type, time });
+  if (logs.length > 20) logs.pop();
+  const el = document.getElementById('logList');
+  el.innerHTML = logs.map(l =>
+    `<div class="log-item ${l.type}"><span class="log-time">${l.time}</span><span>${l.msg}</span></div>`
+  ).join('');
+}
+
+// Init
+updateUI();
+addLog('Sistema inicializado', 'ok', new Date().toLocaleTimeString('pt-BR'));
+draw();
+</script>
+</body>
+</html>
