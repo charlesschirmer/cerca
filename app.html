@@ -1000,7 +1000,7 @@ function addHistory(msg, type) {
 
 // ── MQTT via HiveMQ público ────────────────────────────────────
 const MQTT_HOST = 'broker.hivemq.com';
-const MQTT_PORT = 8884;
+const MQTT_PORT = 443;             // WSS porta 443 — funciona em redes corporativas
 const TOPIC_ID  = 'cerca-eletrica-v1-demo'; // ← mesmo valor do simulador
 const TOPIC     = `cerca/${TOPIC_ID}/evento`;
 const CLIENT_ID = `app-${Math.random().toString(36).slice(2, 9)}`;

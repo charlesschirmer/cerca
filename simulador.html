@@ -771,7 +771,7 @@ canvas.addEventListener('touchstart', e => {
 // ⚠ Canal público: qualquer pessoa com o mesmo TOPIC_ID lê as msgs.
 // Para uso privado, troque TOPIC_ID por um valor único seu.
 const MQTT_HOST  = 'broker.hivemq.com';
-const MQTT_PORT  = 8884;          // WSS (TLS) — funciona no GitHub Pages
+const MQTT_PORT  = 443;           // WSS porta 443 — funciona em redes corporativas
 const TOPIC_ID   = 'cerca-eletrica-v1-demo'; // ← troque para algo único se quiser privacidade
 const TOPIC      = `cerca/${TOPIC_ID}/evento`;
 const CLIENT_ID  = `simulador-${Math.random().toString(36).slice(2, 9)}`;
