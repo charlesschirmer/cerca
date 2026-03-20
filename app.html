@@ -2,278 +2,345 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Cerca Elétrica — App de Controle</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0f0c">
+<title>Cerca Elétrica</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0b0d0f;
-    --surface: #141618;
-    --surface2: #1c1f22;
-    --border: #2a2d30;
+    --bg: #0b0f0c;
+    --surface: #111715;
+    --surface2: #171e1a;
+    --border: #1e2821;
     --green: #00e676;
-    --green-dim: rgba(0,230,118,0.12);
-    --red: #ff3d3d;
-    --red-dim: rgba(255,61,61,0.12);
-    --yellow: #ffca28;
-    --text: #e8eaed;
-    --text-dim: #6b7280;
-    --radius: 16px;
+    --green2: #00c853;
+    --green-dim: rgba(0,230,118,0.10);
+    --red: #ff3b3b;
+    --red-dim: rgba(255,59,59,0.10);
+    --text: #e4ede8;
+    --text2: #8a9e92;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-  body {
-    background: #1a1a2e;
-    font-family: 'DM Sans', sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 20px;
-  }
-
-  /* Phone frame */
-  .phone {
-    width: 390px;
-    min-height: 844px;
-    background: var(--bg);
-    border-radius: 50px;
-    border: 3px solid #2a2a3a;
-    box-shadow: 
-      0 0 0 6px #111,
-      0 0 0 8px #222,
-      0 40px 80px rgba(0,0,0,0.8),
-      0 0 60px rgba(0,230,118,0.06);
+  html, body {
+    height: 100%;
     overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
     display: flex;
     flex-direction: column;
-    position: relative;
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
   }
 
-  /* Notch */
-  .notch {
-    width: 130px;
-    height: 34px;
-    background: #111;
-    border-radius: 0 0 22px 22px;
-    margin: 0 auto;
+  .header {
+    padding: calc(var(--safe-top) + 16px) 20px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
     position: relative;
     z-index: 10;
   }
 
-  /* Status bar */
-  .status-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 24px 4px;
-    font-size: 13px;
-    font-weight: 600;
+  .header-left { display: flex; flex-direction: column; gap: 2px; }
+
+  .header-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
     color: var(--text);
-  }
-
-  .status-icons { display: flex; gap: 6px; align-items: center; }
-  .status-icons svg { width: 16px; height: 16px; }
-
-  /* Nav bar top */
-  .nav-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 20px 8px;
-  }
-
-  .nav-back {
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    color: var(--text-dim);
-    font-size: 16px;
-  }
-
-  .nav-title {
-    font-family: 'Orbitron', monospace;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: var(--text);
-  }
-
-  .power-btn {
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    border: none;
-    background: var(--green-dim);
-    color: var(--green);
-    font-size: 16px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s;
-  }
-  .power-btn.off { background: var(--red-dim); color: var(--red); }
-  .power-btn:active { transform: scale(0.9); }
-
-  /* Scrollable content */
-  .scroll-area {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 16px 20px;
-    scrollbar-width: none;
-  }
-  .scroll-area::-webkit-scrollbar { display: none; }
-
-  /* Metrics row */
-  .metrics-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .metric-card {
-    flex: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .metric-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--green);
-    border-radius: 2px 2px 0 0;
-    opacity: 0.6;
-  }
-
-  .metric-card.alert::before { background: var(--red); }
-
-  .metric-icon { font-size: 18px; margin-bottom: 4px; }
-
-  .metric-value {
-    font-family: 'Orbitron', monospace;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--green);
     line-height: 1;
   }
 
-  .metric-value.alert { color: var(--red); }
-
-  .metric-label {
+  .header-sub {
+    font-family: var(--mono);
     font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 1px;
+    color: var(--text2);
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    margin-top: 3px;
+    margin-top: 2px;
   }
 
-  /* Main card */
-  .main-card {
-    background: var(--surface);
+  .header-right { display: flex; align-items: center; gap: 10px; }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: var(--green-dim);
+    border: 1px solid rgba(0,230,118,0.2);
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    letter-spacing: 1px;
+    transition: all 0.3s;
+  }
+
+  .live-badge.alert {
+    background: var(--red-dim);
+    border-color: rgba(255,59,59,0.25);
+    color: var(--red);
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: live-blink 1.4s ease-in-out infinite;
+  }
+
+  .live-badge.alert .live-dot { background: var(--red); animation: live-blink 0.6s ease-in-out infinite; }
+
+  @keyframes live-blink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.2; transform: scale(0.7); }
+  }
+
+  .power-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--surface2);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    color: var(--green);
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .power-btn:active { transform: scale(0.88); background: var(--green-dim); }
+  .power-btn.off { color: var(--text2); }
+
+  .scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 16px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Alert banner */
+  .alert-banner {
+    border-radius: 16px;
     overflow: hidden;
-    margin-bottom: 14px;
-    transition: all 0.4s ease;
+    display: none;
+    animation: banner-in 0.35s cubic-bezier(0.34,1.56,0.64,1);
   }
 
-  .main-card.alert-state {
-    border-color: var(--red);
-    box-shadow: 0 0 20px rgba(255,61,61,0.2);
-    animation: card-pulse 1s ease-in-out infinite alternate;
+  .alert-banner.show { display: block; }
+
+  @keyframes banner-in {
+    from { transform: scale(0.92) translateY(-10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
   }
 
-  @keyframes card-pulse {
-    from { box-shadow: 0 0 10px rgba(255,61,61,0.15); }
-    to { box-shadow: 0 0 30px rgba(255,61,61,0.35); }
-  }
-
-  .alert-header {
-    background: linear-gradient(135deg, #2a0808, #1a0505);
+  .alert-banner-inner {
+    background: linear-gradient(135deg, #1a0808 0%, #0f0404 100%);
+    border: 1px solid rgba(255,59,59,0.3);
+    border-radius: 16px;
     padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    display: none;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    animation: banner-pulse 1.2s ease-in-out infinite alternate;
   }
 
-  .alert-header.show { display: flex; }
+  @keyframes banner-pulse {
+    from { box-shadow: 0 0 20px rgba(255,59,59,0.1); }
+    to { box-shadow: 0 0 40px rgba(255,59,59,0.3); }
+  }
 
-  .alert-icon {
-    width: 56px; height: 56px;
+  .alert-banner-inner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--red), transparent);
+    width: 200%;
+    animation: scan-line 1.8s linear infinite;
+  }
+
+  @keyframes scan-line {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(50%); }
+  }
+
+  .alert-icon-wrap {
+    width: 64px; height: 64px;
     background: var(--red);
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 28px;
-    animation: icon-shake 0.5s ease-in-out infinite alternate;
-    box-shadow: 0 0 20px rgba(255,61,61,0.5);
+    font-size: 32px;
+    animation: icon-throb 0.8s ease-in-out infinite alternate;
   }
 
-  @keyframes icon-shake {
-    from { transform: scale(1) rotate(-3deg); }
-    to { transform: scale(1.05) rotate(3deg); }
+  @keyframes icon-throb {
+    from { transform: scale(1); box-shadow: 0 0 20px rgba(255,59,59,0.4); }
+    to { transform: scale(1.06); box-shadow: 0 0 40px rgba(255,59,59,0.7); }
   }
 
-  .alert-title {
-    font-family: 'Orbitron', monospace;
-    font-size: 20px;
-    font-weight: 900;
+  .alert-banner-title {
+    font-size: 24px;
+    font-weight: 800;
     color: var(--red);
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     text-transform: uppercase;
   }
 
-  .ok-header {
-    background: linear-gradient(135deg, #071a10, #041009);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
+  .alert-banner-seg {
+    background: rgba(255,59,59,0.12);
+    border: 1px solid rgba(255,59,59,0.25);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--red);
+    letter-spacing: 1px;
+    text-align: center;
+    width: 100%;
   }
 
-  .ok-icon {
-    width: 56px; height: 56px;
+  .alert-banner-msg {
+    font-size: 13px;
+    color: #cc8080;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .alert-banner-msg strong { color: var(--text); font-weight: 600; }
+
+  /* Metrics */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .metric-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
     background: var(--green);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px;
-    box-shadow: 0 0 20px rgba(0,230,118,0.4);
+    transition: background 0.3s;
   }
 
-  .ok-title {
-    font-family: 'Orbitron', monospace;
-    font-size: 16px;
+  .metric-card.alert::after { background: var(--red); }
+  .metric-card.alert { border-color: rgba(255,59,59,0.2); }
+
+  .metric-icon { font-size: 20px; line-height: 1; margin-bottom: 6px; }
+
+  .metric-val {
+    font-family: var(--mono);
+    font-size: 22px;
     font-weight: 700;
     color: var(--green);
-    letter-spacing: 2px;
+    line-height: 1;
+    transition: color 0.3s;
   }
 
-  /* Fence mini map */
-  .fence-map {
+  .metric-val.alert { color: var(--red); }
+  .metric-val.dim { color: var(--text2); }
+
+  .metric-lbl {
+    font-size: 9px;
+    color: var(--text2);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text2);
+    padding: 0 2px;
+  }
+
+  /* Fence card */
+  .fence-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .fence-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .fence-card-title { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  .fence-card-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--green-dim);
+    color: var(--green);
+    letter-spacing: 1px;
+    transition: all 0.3s;
+  }
+
+  .fence-card-badge.alert { background: var(--red-dim); color: var(--red); }
+
+  .fence-map-wrap {
     padding: 16px;
-    background: var(--surface2);
-    position: relative;
+    background: #0a1109;
   }
 
   .fence-map-inner {
     position: relative;
     width: 100%;
-    padding-bottom: 60%;
-    border: 1px solid #2a3a2a;
+    padding-bottom: 62%;
+    border: 1px solid #1a2a1a;
     border-radius: 10px;
     overflow: hidden;
-    background: #0a1a0a;
+    background: #060e06;
   }
 
   .fence-svg {
@@ -283,760 +350,677 @@
     height: 100%;
   }
 
-  /* Alert message */
-  .alert-msg {
-    padding: 14px 16px;
-    background: rgba(255,61,61,0.06);
-    border-top: 1px solid rgba(255,61,61,0.15);
-    display: none;
-  }
-
-  .alert-msg.show { display: block; }
-
-  .alert-msg-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--red);
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 6px;
-  }
-
-  .alert-msg-body {
-    font-size: 13px;
-    color: var(--text-dim);
-    line-height: 1.6;
-  }
-
-  .alert-msg-body strong { color: var(--text); }
-
-  /* Segments list */
-  .segments-card {
+  /* Segments */
+  .seg-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 16px;
     overflow: hidden;
-    margin-bottom: 14px;
   }
 
-  .card-header {
-    padding: 14px 16px 10px;
+  .seg-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    gap: 14px;
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .segment-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(42,45,48,0.5);
-    gap: 12px;
     transition: background 0.2s;
   }
 
-  .segment-item:last-child { border-bottom: none; }
+  .seg-item:last-child { border-bottom: none; }
+  .seg-item.broken { background: rgba(255,59,59,0.04); }
 
-  .seg-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 6px var(--green);
+  .seg-indicator {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    background: var(--green-dim);
     flex-shrink: 0;
     transition: all 0.3s;
   }
 
-  .seg-dot.broken {
-    background: var(--red);
-    box-shadow: 0 0 6px var(--red);
-    animation: dot-blink 0.8s ease-in-out infinite;
+  .seg-indicator.broken {
+    background: var(--red-dim);
+    animation: seg-pulse 0.8s ease-in-out infinite alternate;
   }
 
-  @keyframes dot-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+  @keyframes seg-pulse {
+    from { box-shadow: none; }
+    to { box-shadow: 0 0 14px rgba(255,59,59,0.35); }
   }
 
-  .seg-name { flex: 1; font-size: 14px; color: var(--text); font-weight: 500; }
+  .seg-info { flex: 1; }
+
+  .seg-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    transition: color 0.3s;
+  }
+
   .seg-name.broken { color: var(--red); }
 
+  .seg-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+
   .seg-badge {
-    font-size: 11px;
-    padding: 3px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 10px;
     border-radius: 20px;
     background: var(--green-dim);
     color: var(--green);
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     transition: all 0.3s;
+    white-space: nowrap;
   }
 
   .seg-badge.broken {
     background: var(--red-dim);
     color: var(--red);
-    animation: badge-pulse 0.8s ease-in-out infinite;
+    animation: badge-blink 0.8s ease-in-out infinite;
   }
 
-  @keyframes badge-pulse {
+  @keyframes badge-blink {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+    50% { opacity: 0.4; }
   }
 
   /* Action buttons */
-  .actions {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
+  .action-row { display: none; gap: 10px; }
+  .action-row.show { display: flex; }
 
-  .btn {
+  .action-btn {
     flex: 1;
     padding: 16px;
     border: none;
     border-radius: 14px;
-    font-family: 'Orbitron', monospace;
+    font-family: var(--mono);
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 2px;
     cursor: pointer;
-    transition: all 0.2s;
     text-transform: uppercase;
+    transition: all 0.15s;
   }
 
-  .btn:active { transform: scale(0.96); }
+  .action-btn:active { transform: scale(0.95); }
 
   .btn-alarm {
     background: var(--red);
     color: white;
-    box-shadow: 0 4px 20px rgba(255,61,61,0.3);
-    animation: alarm-pulse 1s ease-in-out infinite;
+    animation: alarm-glow 1s ease-in-out infinite alternate;
   }
 
-  @keyframes alarm-pulse {
-    0%, 100% { box-shadow: 0 4px 20px rgba(255,61,61,0.3); }
-    50% { box-shadow: 0 4px 30px rgba(255,61,61,0.6); }
+  @keyframes alarm-glow {
+    from { box-shadow: 0 4px 16px rgba(255,59,59,0.25); }
+    to { box-shadow: 0 4px 32px rgba(255,59,59,0.55); }
   }
 
-  .btn-alarm.silenced { animation: none; background: #4a1a1a; color: var(--red); box-shadow: none; }
-  .btn-mute { background: var(--green); color: #000; box-shadow: 0 4px 20px rgba(0,230,118,0.3); }
-  .btn-mute:active { background: #00c864; }
+  .btn-alarm.silenced {
+    animation: none;
+    background: #2a1212;
+    color: rgba(255,59,59,0.5);
+    box-shadow: none;
+    border: 1px solid rgba(255,59,59,0.2);
+  }
 
-  .actions.hidden { display: none; }
+  .btn-mute {
+    background: var(--green);
+    color: #000;
+    font-weight: 800;
+    box-shadow: 0 4px 24px rgba(0,230,118,0.25);
+  }
 
   /* History */
-  .history-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+  .history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
   }
 
-  .history-item {
+  .history-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .hist-item {
     display: flex;
     align-items: flex-start;
     padding: 12px 16px;
     gap: 12px;
-    border-bottom: 1px solid rgba(42,45,48,0.5);
-    animation: fade-in 0.4s ease;
+    border-bottom: 1px solid var(--border);
+    animation: hist-in 0.3s ease;
   }
 
-  @keyframes fade-in {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
+  .hist-item:last-child { border-bottom: none; }
+
+  @keyframes hist-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  .history-item:last-child { border-bottom: none; }
-
-  .hist-icon {
-    width: 32px; height: 32px;
+  .hist-dot {
+    width: 8px; height: 8px;
     border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
+    margin-top: 5px;
     flex-shrink: 0;
-    margin-top: 1px;
   }
 
-  .hist-icon.alert { background: var(--red-dim); }
-  .hist-icon.ok { background: var(--green-dim); }
+  .hist-dot.alert { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .hist-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
 
   .hist-text { flex: 1; }
-  .hist-title { font-size: 13px; color: var(--text); font-weight: 500; }
-  .hist-time { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .hist-msg { font-size: 13px; color: var(--text); font-weight: 500; line-height: 1.4; }
+  .hist-time { font-family: var(--mono); font-size: 10px; color: var(--text2); margin-top: 2px; letter-spacing: 0.5px; }
 
-  /* Bottom nav */
-  .bottom-nav {
-    display: flex;
-    padding: 10px 20px 24px;
-    border-top: 1px solid var(--border);
-    background: var(--surface);
-  }
-
-  .nav-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
-    padding: 8px 0;
-    border-radius: 12px;
-    transition: all 0.2s;
-    opacity: 0.5;
-  }
-
-  .nav-item.active { opacity: 1; }
-
-  .nav-item-icon { font-size: 20px; }
-  .nav-item-label { font-size: 10px; letter-spacing: 0.5px; color: var(--text-dim); font-weight: 500; }
-  .nav-item.active .nav-item-label { color: var(--green); }
-
-  /* Connection badge */
-  .conn-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: var(--green-dim);
-    border: 1px solid rgba(0,230,118,0.2);
-    border-radius: 20px;
-    font-size: 11px;
-    color: var(--green);
-    margin: 0 16px 14px;
-    letter-spacing: 0.5px;
-  }
-
-  .conn-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: blink 1.5s ease-in-out infinite;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.2; }
-  }
-
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-
-  /* Historico */
   .hist-empty {
-    padding: 30px;
+    padding: 28px 16px;
     text-align: center;
-    color: var(--text-dim);
-    font-size: 13px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text2);
+    letter-spacing: 1px;
   }
 
   /* Config */
+  .config-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
   .config-item {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    border-bottom: 1px solid rgba(42,45,48,0.5);
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 14px;
   }
+
   .config-item:last-child { border-bottom: none; }
-  .config-item-info { flex: 1; }
-  .config-item-title { font-size: 14px; color: var(--text); font-weight: 500; }
-  .config-item-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  .config-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .config-info { flex: 1; }
+  .config-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .config-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
 
   .toggle {
-    width: 44px; height: 24px;
+    width: 48px; height: 28px;
+    border-radius: 14px;
     background: var(--green);
-    border-radius: 12px;
     position: relative;
     cursor: pointer;
-    transition: background 0.3s;
     flex-shrink: 0;
+    transition: background 0.25s;
   }
 
   .toggle::after {
     content: '';
     position: absolute;
-    width: 18px; height: 18px;
+    width: 22px; height: 22px;
     background: white;
     border-radius: 50%;
     top: 3px; left: 23px;
-    transition: left 0.3s;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    transition: left 0.25s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   }
 
   .toggle.off { background: var(--border); }
   .toggle.off::after { left: 3px; }
 
-  .notification-dot {
+  .config-version {
+    padding: 20px 16px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: 1px;
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    display: flex;
+    padding: 8px 10px calc(var(--safe-bottom) + 8px);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 4px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 4px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.18s;
+    opacity: 0.45;
+    position: relative;
+  }
+
+  .nav-btn.active { opacity: 1; background: var(--green-dim); }
+  .nav-btn:active { transform: scale(0.92); }
+
+  .nav-btn-icon { font-size: 22px; line-height: 1; }
+
+  .nav-btn-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--text2);
+    text-transform: uppercase;
+  }
+
+  .nav-btn.active .nav-btn-label { color: var(--green); }
+
+  .nav-badge {
     position: absolute;
-    top: -4px; right: -4px;
+    top: 5px; right: 18px;
     width: 8px; height: 8px;
     background: var(--red);
     border-radius: 50%;
-    border: 2px solid var(--bg);
+    border: 2px solid var(--surface);
     display: none;
   }
 
-  .notification-dot.show { display: block; }
+  .nav-badge.show { display: block; }
+
+  /* Tabs */
+  .tab { display: none; flex-direction: column; gap: 12px; }
+  .tab.active { display: flex; }
 </style>
 </head>
 <body>
 
-<div class="phone">
-  <div class="notch"></div>
+<div class="app">
 
-  <!-- Status bar -->
-  <div class="status-bar">
-    <span id="clockEl">10:28</span>
-    <div class="status-icons">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 8.5l2 2C5.5 8.5 8.5 7 12 7s6.5 1.5 8.5 3.5l2-2C19.9 6.1 16.2 4 12 4S4.1 6.1 1.5 8.5zM12 1C7.3 1 3 2.9 0 6l2 2c2.4-2.5 5.9-4 9.9-4s7.5 1.5 9.9 4l2-2C21 2.9 16.7 1 12 1zm0 10c-1.7 0-3.2.7-4.2 1.8L12 17l4.2-4.2C15.2 11.7 13.7 11 12 11zM12 19l-2-2-2 2 2 2 2-2z"/></svg>
-      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="0" y="6" width="4" height="12" rx="1"/><rect x="6" y="3" width="4" height="15" rx="1"/><rect x="12" y="0" width="4" height="18" rx="1"/><rect x="18" y="-1" width="4" height="20" rx="1"/></svg>
-      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="3.5" y="8.5" width="13" height="8" rx="1" fill="currentColor"/><path d="M20 10h1.5a1.5 1.5 0 0 1 0 3H20" fill="currentColor"/></svg>
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">⚡ Cerca Elétrica</div>
+      <div class="header-sub" id="headerSub">Monitoramento ativo</div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge" id="liveBadge">
+        <div class="live-dot"></div>
+        <span id="liveText">ONLINE</span>
+      </div>
+      <div class="power-btn" id="powerBtn" onclick="togglePower()">⏻</div>
     </div>
   </div>
 
-  <!-- Nav -->
-  <div class="nav-bar">
-    <div class="nav-back">‹</div>
-    <div class="nav-title">CERCA ELÉTRICA</div>
-    <button class="power-btn" id="powerBtn" onclick="togglePower()">⏻</button>
-  </div>
+  <div class="scroll">
 
-  <!-- Connection -->
-  <div class="conn-badge">
-    <div class="conn-dot"></div>
-    Aguardando eventos do simulador...
-  </div>
+    <!-- STATUS -->
+    <div class="tab active" id="tab-status">
 
-  <!-- Tabs content -->
-  <div class="scroll-area">
-
-    <!-- STATUS TAB -->
-    <div class="tab-panel active" id="tab-status">
-
-      <!-- Metrics -->
-      <div class="metrics-row">
-        <div class="metric-card" id="card-kv">
-          <div class="metric-icon">⚡</div>
-          <div class="metric-value" id="disp-kv">7,5</div>
-          <div class="metric-label">KV</div>
-        </div>
-        <div class="metric-card" id="card-pulse">
-          <div class="metric-icon">〰️</div>
-          <div class="metric-value" id="disp-pulse">48</div>
-          <div class="metric-label">Pulsos/min</div>
-        </div>
-        <div class="metric-card" id="card-status">
-          <div class="metric-icon">🛡️</div>
-          <div class="metric-value" id="disp-ok" style="font-size:16px">OK</div>
-          <div class="metric-label">Status</div>
+      <div class="alert-banner" id="alertBanner">
+        <div class="alert-banner-inner">
+          <div class="alert-icon-wrap">⚠️</div>
+          <div class="alert-banner-title">ALERTA!</div>
+          <div class="alert-banner-seg" id="alertSeg">—</div>
+          <div class="alert-banner-msg" id="alertMsg">Verifique o rompimento e faça os devidos reparos.</div>
         </div>
       </div>
 
-      <!-- Main card -->
-      <div class="main-card" id="mainCard">
-
-        <!-- Alert header -->
-        <div class="alert-header" id="alertHeader">
-          <div class="alert-icon">⚠️</div>
-          <div class="alert-title">ALERTA!</div>
+      <div class="metrics-row">
+        <div class="metric-card" id="mcard-kv">
+          <div class="metric-icon">⚡</div>
+          <div class="metric-val" id="m-kv">7,5</div>
+          <div class="metric-lbl">KV</div>
         </div>
-
-        <!-- OK header -->
-        <div class="ok-header" id="okHeader">
-          <div class="ok-icon">✓</div>
-          <div class="ok-title">SISTEMA ATIVO</div>
+        <div class="metric-card" id="mcard-pulse">
+          <div class="metric-icon">〰</div>
+          <div class="metric-val" id="m-pulse">48</div>
+          <div class="metric-lbl">Pulsos/min</div>
         </div>
+        <div class="metric-card" id="mcard-broken">
+          <div class="metric-icon">🔗</div>
+          <div class="metric-val" id="m-broken">0</div>
+          <div class="metric-lbl">Rompidos</div>
+        </div>
+      </div>
 
-        <!-- Fence mini map -->
-        <div class="fence-map">
+      <div class="action-row" id="actionRow">
+        <button class="action-btn btn-alarm" id="btnAlarm" onclick="silenceAlarm()">🔔 ALARME</button>
+        <button class="action-btn btn-mute" onclick="silenceAlarm()">🔕 MUDO</button>
+      </div>
+
+      <div class="fence-card">
+        <div class="fence-card-header">
+          <div class="fence-card-title">Mapa da Cerca</div>
+          <div class="fence-card-badge" id="fenceCardBadge">4/4 OK</div>
+        </div>
+        <div class="fence-map-wrap">
           <div class="fence-map-inner">
-            <svg class="fence-svg" viewBox="0 0 300 180" id="fenceSvg">
-              <!-- Ground -->
+            <svg class="fence-svg" id="fenceSvg" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <radialGradient id="gnd" cx="50%" cy="50%">
-                  <stop offset="0%" stop-color="#1e4a1e"/>
-                  <stop offset="100%" stop-color="#0a2a0a"/>
+                <radialGradient id="gnd" cx="50%" cy="60%">
+                  <stop offset="0%" stop-color="#122012"/>
+                  <stop offset="100%" stop-color="#060e06"/>
                 </radialGradient>
+                <filter id="glow-red" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
               </defs>
-              <rect width="300" height="180" fill="url(#gnd)"/>
-              <!-- Posts -->
-              <g id="svgPosts"></g>
-              <!-- Wires -->
-              <g id="svgWires"></g>
+              <rect width="320" height="200" fill="url(#gnd)"/>
+              <g id="svgContent"></g>
             </svg>
           </div>
         </div>
-
-        <!-- Alert message -->
-        <div class="alert-msg" id="alertMsg">
-          <div class="alert-msg-title">⚠ Rompimento detectado!</div>
-          <div class="alert-msg-body" id="alertMsgBody">
-            Sistema operando normalmente.
-          </div>
-        </div>
       </div>
 
-      <!-- Action buttons -->
-      <div class="actions hidden" id="actionBtns">
-        <button class="btn btn-alarm" id="btnAlarm" onclick="toggleAlarm()">ALARME</button>
-        <button class="btn btn-mute" onclick="silenceAlarm()">MUDO</button>
-      </div>
+      <div class="section-label">Segmentos</div>
+      <div class="seg-card" id="segCard"></div>
 
-      <!-- Segments -->
-      <div class="segments-card">
-        <div class="card-header">
-          <span>Segmentos da Cerca</span>
-          <span id="segCount" style="color:var(--green); font-size:11px">4/4 OK</span>
-        </div>
-        <div id="segmentsList"></div>
-      </div>
+    </div>
 
-    </div><!-- /tab-status -->
-
-    <!-- HISTÓRICO TAB -->
-    <div class="tab-panel" id="tab-historico">
-      <div class="segments-card">
-        <div class="card-header">Histórico de Eventos</div>
-        <div class="history-list" id="historyList">
-          <div class="hist-empty">Nenhum evento registrado.</div>
-        </div>
+    <!-- HISTÓRICO -->
+    <div class="tab" id="tab-historico">
+      <div class="history-card">
+        <div class="history-header">Histórico de Eventos</div>
+        <div id="historyList"><div class="hist-empty">NENHUM EVENTO</div></div>
       </div>
     </div>
 
-    <!-- CONFIG TAB -->
-    <div class="tab-panel" id="tab-config">
-      <div class="segments-card">
-        <div class="card-header">Configurações</div>
+    <!-- CONFIG -->
+    <div class="tab" id="tab-config">
+      <div class="config-card">
         <div class="config-item">
-          <div class="config-item-info">
-            <div class="config-item-title">Notificações Push</div>
-            <div class="config-item-sub">Alertas em tempo real</div>
+          <div class="config-icon">🔔</div>
+          <div class="config-info">
+            <div class="config-title">Notificações Push</div>
+            <div class="config-sub">Alertas em tempo real</div>
           </div>
           <div class="toggle" onclick="this.classList.toggle('off')"></div>
         </div>
         <div class="config-item">
-          <div class="config-item-info">
-            <div class="config-item-title">Alarme Sonoro</div>
-            <div class="config-item-sub">Sirene ao detectar rompimento</div>
+          <div class="config-icon">🔊</div>
+          <div class="config-info">
+            <div class="config-title">Alarme Sonoro</div>
+            <div class="config-sub">Sirene ao detectar rompimento</div>
           </div>
           <div class="toggle" onclick="this.classList.toggle('off')"></div>
         </div>
         <div class="config-item">
-          <div class="config-item-info">
-            <div class="config-item-title">Modo Noturno</div>
-            <div class="config-item-sub">Sensibilidade aumentada</div>
+          <div class="config-icon">🌙</div>
+          <div class="config-info">
+            <div class="config-title">Modo Noturno</div>
+            <div class="config-sub">Sensibilidade aumentada após 22h</div>
           </div>
           <div class="toggle off" onclick="this.classList.toggle('off')"></div>
         </div>
         <div class="config-item">
-          <div class="config-item-info">
-            <div class="config-item-title">KV Mínimo</div>
-            <div class="config-item-sub">Alertar se abaixo de 5,0 kV</div>
+          <div class="config-icon">⚡</div>
+          <div class="config-info">
+            <div class="config-title">KV Mínimo</div>
+            <div class="config-sub">Alertar se abaixo de 5,0 kV</div>
           </div>
           <div class="toggle" onclick="this.classList.toggle('off')"></div>
         </div>
         <div class="config-item">
-          <div class="config-item-info">
-            <div class="config-item-title">Versão do App</div>
-            <div class="config-item-sub">v2.4.1 — Atualizado</div>
+          <div class="config-icon">📡</div>
+          <div class="config-info">
+            <div class="config-title">Link com Simulador</div>
+            <div class="config-sub">Comunicação via localStorage</div>
           </div>
-          <div style="font-size:11px; color:var(--green)">✓</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--green);">ATIVO</div>
         </div>
       </div>
+      <div class="config-version">CERCA ELÉTRICA v2.4.1 · BUILD 241</div>
     </div>
 
-  </div><!-- /scroll-area -->
+  </div>
 
-  <!-- Bottom nav -->
   <div class="bottom-nav">
-    <div class="nav-item active" id="nav-status" onclick="switchTab('status')">
-      <div class="nav-item-icon" style="position:relative">
-        🏠
-        <div class="notification-dot" id="navDot"></div>
-      </div>
-      <div class="nav-item-label">Status</div>
+    <div class="nav-btn active" id="nav-status" onclick="switchTab('status')">
+      <div class="nav-btn-icon">🏠</div>
+      <div class="nav-btn-label">Status</div>
+      <div class="nav-badge" id="navBadge"></div>
     </div>
-    <div class="nav-item" id="nav-historico" onclick="switchTab('historico')">
-      <div class="nav-item-icon">🕐</div>
-      <div class="nav-item-label">Histórico</div>
+    <div class="nav-btn" id="nav-historico" onclick="switchTab('historico')">
+      <div class="nav-btn-icon">🕐</div>
+      <div class="nav-btn-label">Histórico</div>
     </div>
-    <div class="nav-item" id="nav-config" onclick="switchTab('config')">
-      <div class="nav-item-icon">⚙️</div>
-      <div class="nav-item-label">Configurações</div>
+    <div class="nav-btn" id="nav-config" onclick="switchTab('config')">
+      <div class="nav-btn-icon">⚙️</div>
+      <div class="nav-btn-label">Config</div>
     </div>
   </div>
+
 </div>
 
 <script>
-// ── State ────────────────────────────────────────────────────
-let state = {
+const state = {
   powered: true,
-  alarmActive: false,
-  alarmSilenced: false,
-  history: [],
+  silenced: false,
   segments: [
-    { name: 'Superior', broken: false },
-    { name: 'Lateral Direito', broken: false },
-    { name: 'Inferior', broken: false },
-    { name: 'Lateral Esquerdo', broken: false },
+    { name: 'Superior',         icon: '↑', broken: false },
+    { name: 'Lateral Direito',  icon: '→', broken: false },
+    { name: 'Inferior',         icon: '↓', broken: false },
+    { name: 'Lateral Esquerdo', icon: '←', broken: false },
   ],
-  lastAlert: null,
+  history: [],
 };
 
-// ── Clock ─────────────────────────────────────────────────────
-function updateClock() {
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  document.getElementById('clockEl').textContent = `${h}:${m}`;
-}
-updateClock();
-setInterval(updateClock, 10000);
-
-// ── Tab switching ─────────────────────────────────────────────
 function switchTab(name) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById(`tab-${name}`).classList.add('active');
-  document.getElementById(`nav-${name}`).classList.add('active');
-
-  if (name === 'status') document.getElementById('navDot').classList.remove('show');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'status') document.getElementById('navBadge').classList.remove('show');
 }
 
-// ── Power toggle ─────────────────────────────────────────────
 function togglePower() {
   state.powered = !state.powered;
-  const btn = document.getElementById('powerBtn');
-  btn.className = 'power-btn' + (state.powered ? '' : ' off');
-  if (!state.powered) {
-    resetDisplay();
-    addHistory('Sistema desligado', 'ok');
-  } else {
-    addHistory('Sistema ligado', 'ok');
-    renderAll();
-  }
-}
-
-// ── Fence SVG mini-map ────────────────────────────────────────
-function buildFenceSVG() {
-  // Simple top-down schematic map
-  const postsEl = document.getElementById('svgPosts');
-  const wiresEl = document.getElementById('svgWires');
-
-  const pts = [
-    {x:50,y:30},{x:150,y:30},{x:250,y:30},
-    {x:50,y:90},              {x:250,y:90},
-    {x:50,y:150},{x:150,y:150},{x:250,y:150},
-  ];
-
-  postsEl.innerHTML = pts.map(p =>
-    `<circle cx="${p.x}" cy="${p.y}" r="5" fill="#1a1a2e" stroke="#ffd700" stroke-width="1.5"/>
-     <circle cx="${p.x}" cy="${p.y}" r="2" fill="#ffd700"/>`
-  ).join('');
-
-  // Wire segments per side
-  const sides = [
-    { id: 'top', segs: [[pts[0],pts[1]],[pts[1],pts[2]]] },
-    { id: 'right', segs: [[pts[2],pts[4]],[pts[4],pts[7]]] },
-    { id: 'bottom', segs: [[pts[7],pts[6]],[pts[6],pts[5]]] },
-    { id: 'left', segs: [[pts[5],pts[3]],[pts[3],pts[0]]] },
-  ];
-
-  // Map side id to segment index
-  const sideMap = { top: 0, right: 1, bottom: 2, left: 3 };
-
-  wiresEl.innerHTML = sides.map(side => {
-    const segIdx = sideMap[side.id];
-    const broken = state.segments[segIdx].broken;
-    return side.segs.map((seg, i) => {
-      if (broken && i === 0) {
-        // Draw broken wire
-        const mx = (seg[0].x + seg[1].x) / 2;
-        const my = (seg[0].y + seg[1].y) / 2 + 8;
-        return `
-          <line x1="${seg[0].x}" y1="${seg[0].y}" x2="${mx}" y2="${my}" stroke="#ff4444" stroke-width="1.5" stroke-dasharray="3,2"/>
-          <line x1="${seg[1].x}" y1="${seg[1].y}" x2="${mx+3}" y2="${my+3}" stroke="#ff4444" stroke-width="1.5" stroke-dasharray="3,2"/>
-          <circle cx="${mx}" cy="${my}" r="3" fill="#ffaa00" class="spark"/>
-        `;
-      }
-      return `<line x1="${seg[0].x}" y1="${seg[0].y}" x2="${seg[1].x}" y2="${seg[1].y}" stroke="${broken ? '#ff4444' : '#88aacc'}" stroke-width="1.5"/>`;
-    }).join('');
-  }).join('');
-
-  // Energizer box
-  postsEl.innerHTML += `<rect x="38" y="155" width="18" height="13" rx="2" fill="#111" stroke="#334433"/>
-    <text x="47" y="165" text-anchor="middle" font-size="8" fill="#00e676">⚡</text>`;
-}
-
-// ── Render UI ─────────────────────────────────────────────────
-function renderAll() {
-  if (!state.powered) return;
-
-  const broken = state.segments.filter(s => s.broken);
-  const hasAlert = broken.length > 0;
-
-  // Metrics
-  document.getElementById('disp-kv').textContent = hasAlert ? '0,0' : '7,5';
-  document.getElementById('disp-pulse').textContent = hasAlert ? '0' : '48';
-  document.getElementById('disp-ok').textContent = hasAlert ? `${broken.length}⚠` : 'OK';
-  document.getElementById('card-kv').className = 'metric-card' + (hasAlert ? ' alert' : '');
-  document.getElementById('card-pulse').className = 'metric-card' + (hasAlert ? ' alert' : '');
-  document.getElementById('card-status').className = 'metric-card' + (hasAlert ? ' alert' : '');
-  document.getElementById('disp-kv').className = 'metric-value' + (hasAlert ? ' alert' : '');
-  document.getElementById('disp-pulse').className = 'metric-value' + (hasAlert ? ' alert' : '');
-  document.getElementById('disp-ok').className = 'metric-value' + (hasAlert ? ' alert' : '');
-
-  // Main card
-  const mc = document.getElementById('mainCard');
-  mc.className = 'main-card' + (hasAlert ? ' alert-state' : '');
-  document.getElementById('alertHeader').className = 'alert-header' + (hasAlert ? ' show' : '');
-  document.getElementById('okHeader').style.display = hasAlert ? 'none' : 'flex';
-
-  // Alert msg
-  const msgEl = document.getElementById('alertMsg');
-  const bodyEl = document.getElementById('alertMsgBody');
-  if (hasAlert) {
-    msgEl.classList.add('show');
-    const names = broken.map(s => `<strong>${s.name}</strong>`).join(', ');
-    bodyEl.innerHTML = `Rompimento detectado no segmento ${names}. Verifique o rompimento e faça os devidos reparos para restaurar o funcionamento da cerca.`;
-  } else {
-    msgEl.classList.remove('show');
-  }
-
-  // Action buttons
-  document.getElementById('actionBtns').className = 'actions' + (hasAlert ? '' : ' hidden');
-
-  // Segments list
-  const segCount = state.segments.length - broken.length;
-  document.getElementById('segCount').textContent =
-    broken.length > 0 ? `${broken.length} ROMPIDO(S)` : `${segCount}/${state.segments.length} OK`;
-  document.getElementById('segCount').style.color = broken.length > 0 ? 'var(--red)' : 'var(--green)';
-
-  const list = document.getElementById('segmentsList');
-  list.innerHTML = state.segments.map(s => `
-    <div class="segment-item">
-      <div class="seg-dot ${s.broken ? 'broken' : ''}"></div>
-      <div class="seg-name ${s.broken ? 'broken' : ''}">${s.name}</div>
-      <div class="seg-badge ${s.broken ? 'broken' : ''}">${s.broken ? 'ROMPIDO' : 'OK'}</div>
-    </div>
-  `).join('');
-
-  buildFenceSVG();
-}
-
-// ── Alert / alarm ─────────────────────────────────────────────
-let alarmInterval = null;
-let alarmEl = null;
-
-function triggerAlarm() {
-  state.alarmActive = true;
-  state.alarmSilenced = false;
-  document.getElementById('btnAlarm').className = 'btn btn-alarm';
-
-  // Vibration (mobile)
-  if (navigator.vibrate) navigator.vibrate([400, 100, 400, 100, 400]);
-}
-
-function toggleAlarm() {
-  // Extra functionality placeholder
+  document.getElementById('powerBtn').className = 'power-btn' + (state.powered ? '' : ' off');
+  addHistory(state.powered ? 'Sistema ligado' : 'Sistema desligado', 'ok');
+  renderAll();
 }
 
 function silenceAlarm() {
-  state.alarmSilenced = true;
-  state.alarmActive = false;
-  document.getElementById('btnAlarm').className = 'btn btn-alarm silenced';
+  state.silenced = true;
+  document.getElementById('btnAlarm').className = 'action-btn btn-alarm silenced';
   if (navigator.vibrate) navigator.vibrate(0);
 }
 
-function resetDisplay() {
-  document.getElementById('disp-kv').textContent = '--';
-  document.getElementById('disp-pulse').textContent = '--';
-  document.getElementById('disp-ok').textContent = '--';
+function renderAll() {
+  const broken = state.powered ? state.segments.filter(s => s.broken) : [];
+  const hasAlert = broken.length > 0;
+  const off = !state.powered;
+
+  document.getElementById('liveBadge').className = 'live-badge' + (hasAlert ? ' alert' : '');
+  document.getElementById('liveText').textContent = off ? 'OFFLINE' : hasAlert ? 'ALERTA' : 'ONLINE';
+  document.getElementById('headerSub').textContent = off
+    ? 'Sistema desligado'
+    : hasAlert ? broken.length + ' rompimento(s) detectado(s)'
+    : 'Monitoramento ativo';
+
+  const kvVal = off ? '--' : hasAlert ? '0,0' : '7,5';
+  const pulseVal = off ? '--' : hasAlert ? '0' : '48';
+  const brokenVal = off ? '--' : String(broken.length);
+
+  document.getElementById('m-kv').textContent = kvVal;
+  document.getElementById('m-pulse').textContent = pulseVal;
+  document.getElementById('m-broken').textContent = brokenVal;
+  document.getElementById('m-kv').className = 'metric-val' + (off ? ' dim' : hasAlert ? ' alert' : '');
+  document.getElementById('m-pulse').className = 'metric-val' + (off ? ' dim' : hasAlert ? ' alert' : '');
+  document.getElementById('m-broken').className = 'metric-val' + (off ? ' dim' : broken.length > 0 ? ' alert' : '');
+  document.getElementById('mcard-kv').className = 'metric-card' + (hasAlert ? ' alert' : '');
+  document.getElementById('mcard-pulse').className = 'metric-card' + (hasAlert ? ' alert' : '');
+  document.getElementById('mcard-broken').className = 'metric-card' + (broken.length > 0 ? ' alert' : '');
+
+  if (hasAlert) {
+    document.getElementById('alertBanner').classList.add('show');
+    document.getElementById('alertSeg').textContent = 'Rompimento: ' + broken.map(s => s.name).join(' · ');
+    document.getElementById('alertMsg').innerHTML =
+      'Verifique o segmento <strong>' + broken.map(s => s.name).join(', ') + '</strong> e faça os devidos reparos para restaurar o funcionamento da cerca.';
+  } else {
+    document.getElementById('alertBanner').classList.remove('show');
+  }
+
+  document.getElementById('actionRow').className = 'action-row' + (hasAlert ? ' show' : '');
+  if (!hasAlert) { state.silenced = false; document.getElementById('btnAlarm').className = 'action-btn btn-alarm'; }
+
+  const okCount = state.segments.length - broken.length;
+  document.getElementById('fenceCardBadge').textContent = hasAlert ? broken.length + ' ROMPIDO(S)' : okCount + '/' + state.segments.length + ' OK';
+  document.getElementById('fenceCardBadge').className = 'fence-card-badge' + (hasAlert ? ' alert' : '');
+
+  renderSegments();
+  buildFenceSVG();
+
+  if (hasAlert && !state.silenced && navigator.vibrate) {
+    navigator.vibrate([300, 100, 300, 100, 500]);
+  }
 }
 
-// ── History ───────────────────────────────────────────────────
+function renderSegments() {
+  document.getElementById('segCard').innerHTML = state.segments.map(s => `
+    <div class="seg-item ${s.broken ? 'broken' : ''}">
+      <div class="seg-indicator ${s.broken ? 'broken' : ''}">${s.broken ? '⚡' : s.icon}</div>
+      <div class="seg-info">
+        <div class="seg-name ${s.broken ? 'broken' : ''}">${s.name}</div>
+        <div class="seg-sub">${s.broken ? 'Rompimento detectado' : 'Operando normalmente'}</div>
+      </div>
+      <div class="seg-badge ${s.broken ? 'broken' : ''}">${s.broken ? 'ROMPIDO' : 'OK'}</div>
+    </div>
+  `).join('');
+}
+
+function buildFenceSVG() {
+  const posts = [
+    {x:40,y:30},{x:160,y:30},{x:280,y:30},
+    {x:40,y:100},            {x:280,y:100},
+    {x:40,y:170},{x:160,y:170},{x:280,y:170},
+  ];
+
+  const sides = [
+    { idx: 0, segs: [[0,1],[1,2]] },
+    { idx: 1, segs: [[2,4],[4,7]] },
+    { idx: 2, segs: [[7,6],[6,5]] },
+    { idx: 3, segs: [[5,3],[3,0]] },
+  ];
+
+  const labels = [
+    {x:160, y:16, t:'SUPERIOR', a:'middle'},
+    {x:306, y:104, t:'DIR', a:'start'},
+    {x:160, y:192, t:'INFERIOR', a:'middle'},
+    {x:14, y:104, t:'ESQ', a:'end'},
+  ];
+
+  let html = '';
+
+  sides.forEach(side => {
+    const broken = state.powered && state.segments[side.idx].broken;
+    side.segs.forEach((seg, si) => {
+      const p1 = posts[seg[0]], p2 = posts[seg[1]];
+      if (broken && si === 0) {
+        const mx = (p1.x + p2.x) / 2;
+        const my = (p1.y + p2.y) / 2 + 9;
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${mx - 2}" y2="${my}" stroke="#ff3b3b" stroke-width="2" stroke-dasharray="4,3" filter="url(#glow-red)"/>`;
+        html += `<line x1="${p2.x}" y1="${p2.y}" x2="${mx + 4}" y2="${my + 3}" stroke="#ff3b3b" stroke-width="2" stroke-dasharray="4,3" filter="url(#glow-red)"/>`;
+        html += `<circle cx="${mx + 1}" cy="${my + 1}" r="4.5" fill="#ffcc00"/>`;
+        html += `<circle cx="${mx + 1}" cy="${my + 1}" r="8" fill="none" stroke="#ff6600" stroke-width="1.2" opacity="0.5"/>`;
+      } else {
+        const clr = broken ? '#441111' : '#3a7a5a';
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${clr}" stroke-width="1.8"/>`;
+      }
+    });
+  });
+
+  posts.forEach(p => {
+    html += `<circle cx="${p.x}" cy="${p.y}" r="7" fill="#0a1a0a" stroke="#ffc107" stroke-width="1.5"/>`;
+    html += `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#ffc107"/>`;
+  });
+
+  html += `<rect x="14" y="158" width="18" height="14" rx="3" fill="#111" stroke="#2a4a2a"/>`;
+  html += `<text x="23" y="169" text-anchor="middle" font-size="9" fill="#00e676">⚡</text>`;
+  html += `<line x1="23" y1="163" x2="40" y2="170" stroke="#ff4444" stroke-width="1" stroke-dasharray="2,2"/>`;
+
+  labels.forEach((l, i) => {
+    const broken = state.powered && state.segments[i].broken;
+    html += `<text x="${l.x}" y="${l.y}" text-anchor="${l.a}" font-size="7.5" fill="${broken ? '#ff3b3b' : '#2a5a3a'}" font-family="monospace" letter-spacing="1" font-weight="bold">${l.t}</text>`;
+  });
+
+  document.getElementById('svgContent').innerHTML = html;
+}
+
 function addHistory(msg, type) {
   const now = new Date().toLocaleTimeString('pt-BR');
   state.history.unshift({ msg, type, time: now });
-  if (state.history.length > 30) state.history.pop();
-
-  const list = document.getElementById('historyList');
-  list.innerHTML = state.history.map(h => `
-    <div class="history-item">
-      <div class="hist-icon ${h.type}">${h.type === 'alert' ? '⚠️' : '✅'}</div>
+  if (state.history.length > 40) state.history.pop();
+  document.getElementById('historyList').innerHTML = state.history.map(h => `
+    <div class="hist-item">
+      <div class="hist-dot ${h.type}"></div>
       <div class="hist-text">
-        <div class="hist-title">${h.msg}</div>
+        <div class="hist-msg">${h.msg}</div>
         <div class="hist-time">${h.time}</div>
       </div>
     </div>
   `).join('');
 }
 
-// ── Listen for simulator events ───────────────────────────────
-function handleEvent(event) {
-  if (!event) return;
+let lastEventTime = null;
 
-  if (event.type === 'wire_break') {
-    // Update segments
-    const label = event.wireLabel;
-    state.segments.forEach(s => {
-      if (label.startsWith(s.name)) s.broken = true;
-    });
+function handleEvent(evt) {
+  if (!evt || evt.time === lastEventTime) return;
+  lastEventTime = evt.time;
 
-    state.lastAlert = label;
-    addHistory(`Rompimento: ${label}`, 'alert');
-    triggerAlarm();
+  if (evt.type === 'wire_break') {
+    const label = evt.wireLabel || '';
+    state.segments.forEach(s => { if (label.startsWith(s.name)) s.broken = true; });
+    addHistory('Rompimento: ' + label, 'alert');
+    state.silenced = false;
     renderAll();
-
-    // Show notification dot if not on status tab
-    if (!document.getElementById('tab-status').classList.contains('active')) {
-      document.getElementById('navDot').classList.add('show');
-    }
+    const cur = document.querySelector('.tab.active')?.id;
+    if (cur !== 'tab-status') document.getElementById('navBadge').classList.add('show');
   }
 
-  if (event.type === 'reset') {
+  if (evt.type === 'reset') {
     state.segments.forEach(s => s.broken = false);
-    state.alarmActive = false;
-    state.alarmSilenced = false;
+    state.silenced = false;
     addHistory('Cerca restaurada — todos os segmentos OK', 'ok');
     renderAll();
   }
 }
 
-// Poll localStorage for events
-let lastEventTime = null;
-
-function pollEvents() {
-  try {
-    const raw = localStorage.getItem('cerca_event');
-    if (!raw) return;
-    const evt = JSON.parse(raw);
-    if (evt.time === lastEventTime) return;
-    lastEventTime = evt.time;
-    handleEvent(evt);
-  } catch(e) {}
-}
-
 window.addEventListener('storage', e => {
   if (e.key === 'cerca_event' && e.newValue) {
-    try {
-      const evt = JSON.parse(e.newValue);
-      if (evt.time === lastEventTime) return;
-      lastEventTime = evt.time;
-      handleEvent(evt);
-    } catch(e) {}
+    try { handleEvent(JSON.parse(e.newValue)); } catch {}
   }
 });
 
-// Fallback polling (same-origin, different tab sometimes needs this)
-setInterval(pollEvents, 500);
+setInterval(() => {
+  try {
+    const raw = localStorage.getItem('cerca_event');
+    if (raw) handleEvent(JSON.parse(raw));
+  } catch {}
+}, 500);
 
-// ── Init ──────────────────────────────────────────────────────
 renderAll();
 addHistory('App iniciado — monitorando cerca', 'ok');
 </script>
