@@ -405,7 +405,7 @@ function setCanvasSize() {
   const wrap = canvas.parentElement;
   const w = Math.min(wrap.offsetWidth, 720);
   canvas.width = w;
-  canvas.height = Math.round(w * 0.72);
+  canvas.height = Math.round(w * 0.80);
 }
 setCanvasSize();
 window.addEventListener('resize', () => { setCanvasSize(); buildWires(); draw(); });
@@ -417,10 +417,10 @@ const H = () => canvas.height;
 function iso(gx, gy, gz) {
   // gx, gy = ground coords (0-1), gz = height (0-1)
   const cx = W() * 0.5;
-  const cy = H() * 0.72;
-  const sx = W() * 0.42;
-  const sy = H() * 0.22;
-  const sh = H() * 0.55;
+  const cy = H() * 0.82;  // mais baixo: era 0.72
+  const sx = W() * 0.40;  // um pouco mais estreito
+  const sy = H() * 0.20;  // era 0.22
+  const sh = H() * 0.44;  // altura dos postes menor: era 0.55
 
   const x = cx + (gx - gy) * sx;
   const y = cy - (gx + gy) * sy - gz * sh;
@@ -755,14 +755,78 @@ canvas.addEventListener('touchstart', e => {
   }
 }, { passive: false });
 
+// ── MQTT via HiveMQ público — funciona de qualquer lugar ──────
+// Broker público gratuito, sem cadastro, sem configuração.
+// ⚠ Canal público: qualquer pessoa com o mesmo TOPIC_ID lê as msgs.
+// Para uso privado, troque TOPIC_ID por um valor único seu.
+const MQTT_HOST  = 'broker.hivemq.com';
+const MQTT_PORT  = 8884;          // WSS (TLS) — funciona no GitHub Pages
+const TOPIC_ID   = 'cerca-eletrica-v1-demo'; // ← troque para algo único se quiser privacidade
+const TOPIC      = `cerca/${TOPIC_ID}/evento`;
+const CLIENT_ID  = `simulador-${Math.random().toString(36).slice(2, 9)}`;
+
+let mqttClient = null;
+let mqttOk     = false;
+
+function loadMqttLib(cb) {
+  if (window.mqtt) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
+  s.onload = cb;
+  s.onerror = () => addLog('Erro ao carregar lib MQTT', 'alert', new Date().toLocaleTimeString('pt-BR'));
+  document.head.appendChild(s);
+}
+
+function connectMQTT() {
+  loadMqttLib(() => {
+    const url = `wss://${MQTT_HOST}:${MQTT_PORT}/mqtt`;
+    mqttClient = mqtt.connect(url, {
+      clientId: CLIENT_ID,
+      clean: true,
+      reconnectPeriod: 3000,
+    });
+
+    mqttClient.on('connect', () => {
+      mqttOk = true;
+      addLog('MQTT conectado ✓ — pronto para enviar', 'ok', new Date().toLocaleTimeString('pt-BR'));
+      updateConnStatus(true);
+    });
+
+    mqttClient.on('disconnect', () => {
+      mqttOk = false;
+      updateConnStatus(false);
+    });
+
+    mqttClient.on('error', (e) => {
+      mqttOk = false;
+      updateConnStatus(false);
+      addLog('MQTT erro: ' + e.message, 'alert', new Date().toLocaleTimeString('pt-BR'));
+    });
+  });
+}
+
+function updateConnStatus(ok) {
+  const dot  = document.getElementById('systemDot');
+  const stat = document.getElementById('systemStatus');
+  if (!ok && wires.filter(w => w.broken).length === 0) {
+    dot.className = 'dot red';
+    stat.textContent = 'CONECTANDO AO BROKER...';
+    stat.style.color = 'var(--yellow)';
+  } else if (ok) {
+    dot.className = 'dot';
+    stat.textContent = 'SISTEMA ATIVO';
+    stat.style.color = '';
+  }
+}
+
+connectMQTT();
+
 // ── Break logic ───────────────────────────────────────────────
 function triggerBreak(idx) {
   const wire = wires[idx];
   wire.broken = true;
-
   const now = new Date().toLocaleTimeString('pt-BR');
   addLog(`ROMPIMENTO: ${wire.label}`, 'alert', now);
-
   updateUI();
   sendAlertToApp(wire);
   showAlertOverlay();
@@ -773,17 +837,20 @@ function sendAlertToApp(wire) {
     type: 'wire_break',
     wireLabel: wire.label,
     time: new Date().toISOString(),
-    kv: 7.5,
-    pulse: 0,
     brokenCount: wires.filter(w => w.broken).length,
-    allWires: wires.map(w => ({ label: w.label, broken: w.broken })),
   };
-  localStorage.setItem('cerca_event', JSON.stringify(event));
-  // Force storage event on same tab
-  window.dispatchEvent(new StorageEvent('storage', {
-    key: 'cerca_event',
-    newValue: JSON.stringify(event),
-  }));
+  const msg = JSON.stringify(event);
+
+  // MQTT → qualquer dispositivo no mundo com o mesmo tópico
+  if (mqttOk && mqttClient) {
+    mqttClient.publish(TOPIC, msg, { qos: 1, retain: true });
+  } else {
+    addLog('MQTT offline — aguarde reconexão', 'alert', new Date().toLocaleTimeString('pt-BR'));
+  }
+
+  // localStorage → fallback mesma aba/mesmo navegador
+  localStorage.setItem('cerca_event', msg);
+  window.dispatchEvent(new StorageEvent('storage', { key: 'cerca_event', newValue: msg }));
 }
 
 function showAlertOverlay() {
@@ -799,11 +866,14 @@ function resetAll() {
   updateUI();
 
   const event = { type: 'reset', time: new Date().toISOString() };
-  localStorage.setItem('cerca_event', JSON.stringify(event));
-  window.dispatchEvent(new StorageEvent('storage', {
-    key: 'cerca_event',
-    newValue: JSON.stringify(event),
-  }));
+  const msg   = JSON.stringify(event);
+
+  if (mqttOk && mqttClient) {
+    mqttClient.publish(TOPIC, msg, { qos: 1, retain: true });
+  }
+
+  localStorage.setItem('cerca_event', msg);
+  window.dispatchEvent(new StorageEvent('storage', { key: 'cerca_event', newValue: msg }));
 }
 
 function updateUI() {

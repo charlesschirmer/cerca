@@ -672,6 +672,20 @@
     </div>
   </div>
 
+  <div id="connBadge" style="
+    display:flex; align-items:center; gap:6px;
+    margin:8px 16px 0;
+    padding:6px 12px;
+    background:rgba(0,230,118,0.08);
+    border:1px solid rgba(0,230,118,0.18);
+    border-radius:20px;
+    font-family:var(--mono);
+    font-size:10px;
+    color:var(--green);
+    letter-spacing:0.5px;
+    transition:all 0.3s;
+  "><div class="conn-dot"></div>Aguardando Firebase...</div>
+
   <div class="scroll">
 
     <!-- STATUS -->
@@ -984,6 +998,13 @@ function addHistory(msg, type) {
   `).join('');
 }
 
+// ── MQTT via HiveMQ público ────────────────────────────────────
+const MQTT_HOST = 'broker.hivemq.com';
+const MQTT_PORT = 8884;
+const TOPIC_ID  = 'cerca-eletrica-v1-demo'; // ← mesmo valor do simulador
+const TOPIC     = `cerca/${TOPIC_ID}/evento`;
+const CLIENT_ID = `app-${Math.random().toString(36).slice(2, 9)}`;
+
 let lastEventTime = null;
 
 function handleEvent(evt) {
@@ -1008,21 +1029,73 @@ function handleEvent(evt) {
   }
 }
 
+function setConnBadge(ok, text) {
+  const b = document.getElementById('connBadge');
+  if (!b) return;
+  if (ok) {
+    b.style.background  = 'rgba(0,230,118,0.08)';
+    b.style.borderColor = 'rgba(0,230,118,0.18)';
+    b.style.color       = 'var(--green)';
+    b.innerHTML = '<div class="conn-dot"></div>' + text;
+  } else {
+    b.style.background  = 'rgba(255,193,7,0.08)';
+    b.style.borderColor = 'rgba(255,193,7,0.2)';
+    b.style.color       = '#ffc107';
+    b.innerHTML = '◌ ' + text;
+  }
+}
+
+function loadMqttLib(cb) {
+  if (window.mqtt) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
+  s.onload = cb;
+  document.head.appendChild(s);
+}
+
+function connectMQTT() {
+  setConnBadge(false, 'Conectando ao broker MQTT...');
+  loadMqttLib(() => {
+    const url = `wss://${MQTT_HOST}:${MQTT_PORT}/mqtt`;
+    const client = mqtt.connect(url, {
+      clientId: CLIENT_ID,
+      clean: true,
+      reconnectPeriod: 3000,
+    });
+
+    client.on('connect', () => {
+      // retain:true faz o broker guardar a última msg — app recebe estado atual ao conectar
+      client.subscribe(TOPIC, { qos: 1 });
+      setConnBadge(true, 'MQTT conectado • tempo real ativo');
+      addHistory('Broker MQTT conectado ✓', 'ok');
+    });
+
+    client.on('message', (topic, payload) => {
+      try { handleEvent(JSON.parse(payload.toString())); } catch {}
+    });
+
+    client.on('disconnect', () => {
+      setConnBadge(false, 'Reconectando...');
+    });
+
+    client.on('error', (e) => {
+      setConnBadge(false, 'Erro MQTT — tentando reconectar');
+      addHistory('Erro MQTT: ' + e.message, 'alert');
+    });
+  });
+}
+
+// ── localStorage: fallback mesma aba ──────────────────────────
 window.addEventListener('storage', e => {
   if (e.key === 'cerca_event' && e.newValue) {
     try { handleEvent(JSON.parse(e.newValue)); } catch {}
   }
 });
 
-setInterval(() => {
-  try {
-    const raw = localStorage.getItem('cerca_event');
-    if (raw) handleEvent(JSON.parse(raw));
-  } catch {}
-}, 500);
-
+// ── Init ──────────────────────────────────────────────────────
 renderAll();
-addHistory('App iniciado — monitorando cerca', 'ok');
+addHistory('App iniciado — conectando ao broker...', 'ok');
+connectMQTT();
 </script>
 </body>
 </html>
