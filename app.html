@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0f0c">
+<title>Cerca Elétrica</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f0c;
+    --surface: #111715;
+    --surface2: #171e1a;
+    --border: #1e2821;
+    --green: #00e676;
+    --green2: #00c853;
+    --green-dim: rgba(0,230,118,0.10);
+    --red: #ff3b3b;
+    --red-dim: rgba(255,59,59,0.10);
+    --text: #e4ede8;
+    --text2: #8a9e92;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .header {
+    padding: calc(var(--safe-top) + 16px) 20px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .header-left { display: flex; flex-direction: column; gap: 2px; }
+
+  .header-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .header-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .header-right { display: flex; align-items: center; gap: 10px; }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: var(--green-dim);
+    border: 1px solid rgba(0,230,118,0.2);
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    letter-spacing: 1px;
+    transition: all 0.3s;
+  }
+
+  .live-badge.alert {
+    background: var(--red-dim);
+    border-color: rgba(255,59,59,0.25);
+    color: var(--red);
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: live-blink 1.4s ease-in-out infinite;
+  }
+
+  .live-badge.alert .live-dot { background: var(--red); animation: live-blink 0.6s ease-in-out infinite; }
+
+  @keyframes live-blink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.2; transform: scale(0.7); }
+  }
+
+  .power-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .power-btn:active { transform: scale(0.88); background: var(--green-dim); }
+  .power-btn.off { color: var(--text2); }
+
+  .scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 16px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Alert banner */
+  .alert-banner {
+    border-radius: 16px;
+    overflow: hidden;
+    display: none;
+    animation: banner-in 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .alert-banner.show { display: block; }
+
+  @keyframes banner-in {
+    from { transform: scale(0.92) translateY(-10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  .alert-banner-inner {
+    background: linear-gradient(135deg, #1a0808 0%, #0f0404 100%);
+    border: 1px solid rgba(255,59,59,0.3);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    animation: banner-pulse 1.2s ease-in-out infinite alternate;
+  }
+
+  @keyframes banner-pulse {
+    from { box-shadow: 0 0 20px rgba(255,59,59,0.1); }
+    to { box-shadow: 0 0 40px rgba(255,59,59,0.3); }
+  }
+
+  .alert-banner-inner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--red), transparent);
+    width: 200%;
+    animation: scan-line 1.8s linear infinite;
+  }
+
+  @keyframes scan-line {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(50%); }
+  }
+
+  .alert-icon-wrap {
+    width: 64px; height: 64px;
+    background: var(--red);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    animation: icon-throb 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes icon-throb {
+    from { transform: scale(1); box-shadow: 0 0 20px rgba(255,59,59,0.4); }
+    to { transform: scale(1.06); box-shadow: 0 0 40px rgba(255,59,59,0.7); }
+  }
+
+  .alert-banner-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--red);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .alert-banner-seg {
+    background: rgba(255,59,59,0.12);
+    border: 1px solid rgba(255,59,59,0.25);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--red);
+    letter-spacing: 1px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .alert-banner-msg {
+    font-size: 13px;
+    color: #cc8080;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .alert-banner-msg strong { color: var(--text); font-weight: 600; }
+
+  /* Metrics */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .metric-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--green);
+    transition: background 0.3s;
+  }
+
+  .metric-card.alert::after { background: var(--red); }
+  .metric-card.alert { border-color: rgba(255,59,59,0.2); }
+
+  .metric-icon { font-size: 20px; line-height: 1; margin-bottom: 6px; }
+
+  .metric-val {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--green);
+    line-height: 1;
+    transition: color 0.3s;
+  }
+
+  .metric-val.alert { color: var(--red); }
+  .metric-val.dim { color: var(--text2); }
+
+  .metric-lbl {
+    font-size: 9px;
+    color: var(--text2);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text2);
+    padding: 0 2px;
+  }
+
+  /* Fence card */
+  .fence-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .fence-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .fence-card-title { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  .fence-card-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--green-dim);
+    color: var(--green);
+    letter-spacing: 1px;
+    transition: all 0.3s;
+  }
+
+  .fence-card-badge.alert { background: var(--red-dim); color: var(--red); }
+
+  .fence-map-wrap {
+    padding: 16px;
+    background: #0a1109;
+  }
+
+  .fence-map-inner {
+    position: relative;
+    width: 100%;
+    padding-bottom: 62%;
+    border: 1px solid #1a2a1a;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #060e06;
+  }
+
+  .fence-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Segments */
+  .seg-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .seg-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+
+  .seg-item:last-child { border-bottom: none; }
+  .seg-item.broken { background: rgba(255,59,59,0.04); }
+
+  .seg-indicator {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    background: var(--green-dim);
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+
+  .seg-indicator.broken {
+    background: var(--red-dim);
+    animation: seg-pulse 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes seg-pulse {
+    from { box-shadow: none; }
+    to { box-shadow: 0 0 14px rgba(255,59,59,0.35); }
+  }
+
+  .seg-info { flex: 1; }
+
+  .seg-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    transition: color 0.3s;
+  }
+
+  .seg-name.broken { color: var(--red); }
+
+  .seg-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .seg-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--green-dim);
+    color: var(--green);
+    letter-spacing: 1px;
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+
+  .seg-badge.broken {
+    background: var(--red-dim);
+    color: var(--red);
+    animation: badge-blink 0.8s ease-in-out infinite;
+  }
+
+  @keyframes badge-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Action buttons */
+  .action-row { display: none; gap: 10px; }
+  .action-row.show { display: flex; }
+
+  .action-btn {
+    flex: 1;
+    padding: 16px;
+    border: none;
+    border-radius: 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+
+  .action-btn:active { transform: scale(0.95); }
+
+  .btn-alarm {
+    background: var(--red);
+    color: white;
+    animation: alarm-glow 1s ease-in-out infinite alternate;
+  }
+
+  @keyframes alarm-glow {
+    from { box-shadow: 0 4px 16px rgba(255,59,59,0.25); }
+    to { box-shadow: 0 4px 32px rgba(255,59,59,0.55); }
+  }
+
+  .btn-alarm.silenced {
+    animation: none;
+    background: #2a1212;
+    color: rgba(255,59,59,0.5);
+    box-shadow: none;
+    border: 1px solid rgba(255,59,59,0.2);
+  }
+
+  .btn-mute {
+    background: var(--green);
+    color: #000;
+    font-weight: 800;
+    box-shadow: 0 4px 24px rgba(0,230,118,0.25);
+  }
+
+  /* History */
+  .history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .history-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .hist-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 16px;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    animation: hist-in 0.3s ease;
+  }
+
+  .hist-item:last-child { border-bottom: none; }
+
+  @keyframes hist-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hist-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .hist-dot.alert { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .hist-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  .hist-text { flex: 1; }
+  .hist-msg { font-size: 13px; color: var(--text); font-weight: 500; line-height: 1.4; }
+  .hist-time { font-family: var(--mono); font-size: 10px; color: var(--text2); margin-top: 2px; letter-spacing: 0.5px; }
+
+  .hist-empty {
+    padding: 28px 16px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text2);
+    letter-spacing: 1px;
+  }
+
+  /* Config */
+  .config-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .config-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 14px;
+  }
+
+  .config-item:last-child { border-bottom: none; }
+
+  .config-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .config-info { flex: 1; }
+  .config-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .config-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .toggle {
+    width: 48px; height: 28px;
+    border-radius: 14px;
+    background: var(--green);
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.25s;
+  }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 22px; height: 22px;
+    background: white;
+    border-radius: 50%;
+    top: 3px; left: 23px;
+    transition: left 0.25s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  .toggle.off { background: var(--border); }
+  .toggle.off::after { left: 3px; }
+
+  .config-version {
+    padding: 20px 16px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: 1px;
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    display: flex;
+    padding: 8px 10px calc(var(--safe-bottom) + 8px);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 4px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 4px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.18s;
+    opacity: 0.45;
+    position: relative;
+  }
+
+  .nav-btn.active { opacity: 1; background: var(--green-dim); }
+  .nav-btn:active { transform: scale(0.92); }
+
+  .nav-btn-icon { font-size: 22px; line-height: 1; }
+
+  .nav-btn-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--text2);
+    text-transform: uppercase;
+  }
+
+  .nav-btn.active .nav-btn-label { color: var(--green); }
+
+  .nav-badge {
+    position: absolute;
+    top: 5px; right: 18px;
+    width: 8px; height: 8px;
+    background: var(--red);
+    border-radius: 50%;
+    border: 2px solid var(--surface);
+    display: none;
+  }
+
+  .nav-badge.show { display: block; }
+
+  /* Tabs */
+  .tab { display: none; flex-direction: column; gap: 12px; }
+  .tab.active { display: flex; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">⚡ Cerca Elétrica</div>
+      <div class="header-sub" id="headerSub">Monitoramento ativo</div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge" id="liveBadge">
+        <div class="live-dot"></div>
+        <span id="liveText">ONLINE</span>
+      </div>
+      <div class="power-btn" id="powerBtn" onclick="togglePower()">⏻</div>
+    </div>
+  </div>
+
+  <div id="connBadge" style="
+    display:flex; align-items:center; gap:6px;
+    margin:8px 16px 0;
+    padding:6px 12px;
+    background:rgba(0,230,118,0.08);
+    border:1px solid rgba(0,230,118,0.18);
+    border-radius:20px;
+    font-family:var(--mono);
+    font-size:10px;
+    color:var(--green);
+    letter-spacing:0.5px;
+    transition:all 0.3s;
+  "><div class="conn-dot"></div>Aguardando Firebase...</div>
+
+  <div class="scroll">
+
+    <!-- STATUS -->
+    <div class="tab active" id="tab-status">
+
+      <div class="alert-banner" id="alertBanner">
+        <div class="alert-banner-inner">
+          <div class="alert-icon-wrap">⚠️</div>
+          <div class="alert-banner-title">ALERTA!</div>
+          <div class="alert-banner-seg" id="alertSeg">—</div>
+          <div class="alert-banner-msg" id="alertMsg">Verifique o rompimento e faça os devidos reparos.</div>
+        </div>
+      </div>
+
+      <div class="metrics-row">
+        <div class="metric-card" id="mcard-kv">
+          <div class="metric-icon">⚡</div>
+          <div class="metric-val" id="m-kv">7,5</div>
+          <div class="metric-lbl">KV</div>
+        </div>
+        <div class="metric-card" id="mcard-pulse">
+          <div class="metric-icon">〰</div>
+          <div class="metric-val" id="m-pulse">48</div>
+          <div class="metric-lbl">Pulsos/min</div>
+        </div>
+        <div class="metric-card" id="mcard-broken">
+          <div class="metric-icon">🔗</div>
+          <div class="metric-val" id="m-broken">0</div>
+          <div class="metric-lbl">Rompidos</div>
+        </div>
+      </div>
+
+      <div class="action-row" id="actionRow">
+        <button class="action-btn btn-alarm" id="btnAlarm" onclick="silenceAlarm()">🔔 ALARME</button>
+        <button class="action-btn btn-mute" onclick="silenceAlarm()">🔕 MUDO</button>
+      </div>
+
+      <div class="fence-card">
+        <div class="fence-card-header">
+          <div class="fence-card-title">Mapa da Cerca</div>
+          <div class="fence-card-badge" id="fenceCardBadge">4/4 OK</div>
+        </div>
+        <div class="fence-map-wrap">
+          <div class="fence-map-inner">
+            <svg class="fence-svg" id="fenceSvg" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="gnd" cx="50%" cy="60%">
+                  <stop offset="0%" stop-color="#122012"/>
+                  <stop offset="100%" stop-color="#060e06"/>
+                </radialGradient>
+                <filter id="glow-red" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <rect width="320" height="200" fill="url(#gnd)"/>
+              <g id="svgContent"></g>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Segmentos</div>
+      <div class="seg-card" id="segCard"></div>
+
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="tab" id="tab-historico">
+      <div class="history-card">
+        <div class="history-header">Histórico de Eventos</div>
+        <div id="historyList"><div class="hist-empty">NENHUM EVENTO</div></div>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="tab" id="tab-config">
+      <div class="config-card">
+        <div class="config-item">
+          <div class="config-icon">🔔</div>
+          <div class="config-info">
+            <div class="config-title">Notificações Push</div>
+            <div class="config-sub">Alertas em tempo real</div>
+          </div>
+          <div class="toggle" onclick="this.classList.toggle('off')"></div>
+        </div>
+        <div class="config-item">
+          <div class="config-icon">🔊</div>
+          <div class="config-info">
+            <div class="config-title">Alarme Sonoro</div>
+            <div class="config-sub">Sirene ao detectar rompimento</div>
+          </div>
+          <div class="toggle" onclick="this.classList.toggle('off')"></div>
+        </div>
+        <div class="config-item">
+          <div class="config-icon">🌙</div>
+          <div class="config-info">
+            <div class="config-title">Modo Noturno</div>
+            <div class="config-sub">Sensibilidade aumentada após 22h</div>
+          </div>
+          <div class="toggle off" onclick="this.classList.toggle('off')"></div>
+        </div>
+        <div class="config-item">
+          <div class="config-icon">⚡</div>
+          <div class="config-info">
+            <div class="config-title">KV Mínimo</div>
+            <div class="config-sub">Alertar se abaixo de 5,0 kV</div>
+          </div>
+          <div class="toggle" onclick="this.classList.toggle('off')"></div>
+        </div>
+        <div class="config-item">
+          <div class="config-icon">📡</div>
+          <div class="config-info">
+            <div class="config-title">Link com Simulador</div>
+            <div class="config-sub">Comunicação via localStorage</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--green);">ATIVO</div>
+        </div>
+      </div>
+      <div class="config-version">CERCA ELÉTRICA v2.4.1 · BUILD 241</div>
+    </div>
+
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-btn active" id="nav-status" onclick="switchTab('status')">
+      <div class="nav-btn-icon">🏠</div>
+      <div class="nav-btn-label">Status</div>
+      <div class="nav-badge" id="navBadge"></div>
+    </div>
+    <div class="nav-btn" id="nav-historico" onclick="switchTab('historico')">
+      <div class="nav-btn-icon">🕐</div>
+      <div class="nav-btn-label">Histórico</div>
+    </div>
+    <div class="nav-btn" id="nav-config" onclick="switchTab('config')">
+      <div class="nav-btn-icon">⚙️</div>
+      <div class="nav-btn-label">Config</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const state = {
+  powered: true,
+  silenced: false,
+  segments: [
+    { name: 'Superior',         icon: '↑', broken: false },
+    { name: 'Lateral Direito',  icon: '→', broken: false },
+    { name: 'Inferior',         icon: '↓', broken: false },
+    { name: 'Lateral Esquerdo', icon: '←', broken: false },
+  ],
+  history: [],
+};
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'status') document.getElementById('navBadge').classList.remove('show');
+}
+
+function togglePower() {
+  state.powered = !state.powered;
+  document.getElementById('powerBtn').className = 'power-btn' + (state.powered ? '' : ' off');
+  addHistory(state.powered ? 'Sistema ligado' : 'Sistema desligado', 'ok');
+  renderAll();
+}
+
+function silenceAlarm() {
+  state.silenced = true;
+  document.getElementById('btnAlarm').className = 'action-btn btn-alarm silenced';
+  if (navigator.vibrate) navigator.vibrate(0);
+}
+
+function renderAll() {
+  const broken = state.powered ? state.segments.filter(s => s.broken) : [];
+  const hasAlert = broken.length > 0;
+  const off = !state.powered;
+
+  document.getElementById('liveBadge').className = 'live-badge' + (hasAlert ? ' alert' : '');
+  document.getElementById('liveText').textContent = off ? 'OFFLINE' : hasAlert ? 'ALERTA' : 'ONLINE';
+  document.getElementById('headerSub').textContent = off
+    ? 'Sistema desligado'
+    : hasAlert ? broken.length + ' rompimento(s) detectado(s)'
+    : 'Monitoramento ativo';
+
+  const kvVal = off ? '--' : hasAlert ? '0,0' : '7,5';
+  const pulseVal = off ? '--' : hasAlert ? '0' : '48';
+  const brokenVal = off ? '--' : String(broken.length);
+
+  document.getElementById('m-kv').textContent = kvVal;
+  document.getElementById('m-pulse').textContent = pulseVal;
+  document.getElementById('m-broken').textContent = brokenVal;
+  document.getElementById('m-kv').className = 'metric-val' + (off ? ' dim' : hasAlert ? ' alert' : '');
+  document.getElementById('m-pulse').className = 'metric-val' + (off ? ' dim' : hasAlert ? ' alert' : '');
+  document.getElementById('m-broken').className = 'metric-val' + (off ? ' dim' : broken.length > 0 ? ' alert' : '');
+  document.getElementById('mcard-kv').className = 'metric-card' + (hasAlert ? ' alert' : '');
+  document.getElementById('mcard-pulse').className = 'metric-card' + (hasAlert ? ' alert' : '');
+  document.getElementById('mcard-broken').className = 'metric-card' + (broken.length > 0 ? ' alert' : '');
+
+  if (hasAlert) {
+    document.getElementById('alertBanner').classList.add('show');
+    document.getElementById('alertSeg').textContent = 'Rompimento: ' + broken.map(s => s.name).join(' · ');
+    document.getElementById('alertMsg').innerHTML =
+      'Verifique o segmento <strong>' + broken.map(s => s.name).join(', ') + '</strong> e faça os devidos reparos para restaurar o funcionamento da cerca.';
+  } else {
+    document.getElementById('alertBanner').classList.remove('show');
+  }
+
+  document.getElementById('actionRow').className = 'action-row' + (hasAlert ? ' show' : '');
+  if (!hasAlert) { state.silenced = false; document.getElementById('btnAlarm').className = 'action-btn btn-alarm'; }
+
+  const okCount = state.segments.length - broken.length;
+  document.getElementById('fenceCardBadge').textContent = hasAlert ? broken.length + ' ROMPIDO(S)' : okCount + '/' + state.segments.length + ' OK';
+  document.getElementById('fenceCardBadge').className = 'fence-card-badge' + (hasAlert ? ' alert' : '');
+
+  renderSegments();
+  buildFenceSVG();
+
+  if (hasAlert && !state.silenced && navigator.vibrate) {
+    navigator.vibrate([300, 100, 300, 100, 500]);
+  }
+}
+
+function renderSegments() {
+  document.getElementById('segCard').innerHTML = state.segments.map(s => `
+    <div class="seg-item ${s.broken ? 'broken' : ''}">
+      <div class="seg-indicator ${s.broken ? 'broken' : ''}">${s.broken ? '⚡' : s.icon}</div>
+      <div class="seg-info">
+        <div class="seg-name ${s.broken ? 'broken' : ''}">${s.name}</div>
+        <div class="seg-sub">${s.broken ? 'Rompimento detectado' : 'Operando normalmente'}</div>
+      </div>
+      <div class="seg-badge ${s.broken ? 'broken' : ''}">${s.broken ? 'ROMPIDO' : 'OK'}</div>
+    </div>
+  `).join('');
+}
+
+function buildFenceSVG() {
+  const posts = [
+    {x:40,y:30},{x:160,y:30},{x:280,y:30},
+    {x:40,y:100},            {x:280,y:100},
+    {x:40,y:170},{x:160,y:170},{x:280,y:170},
+  ];
+
+  const sides = [
+    { idx: 0, segs: [[0,1],[1,2]] },
+    { idx: 1, segs: [[2,4],[4,7]] },
+    { idx: 2, segs: [[7,6],[6,5]] },
+    { idx: 3, segs: [[5,3],[3,0]] },
+  ];
+
+  const labels = [
+    {x:160, y:16, t:'SUPERIOR', a:'middle'},
+    {x:306, y:104, t:'DIR', a:'start'},
+    {x:160, y:192, t:'INFERIOR', a:'middle'},
+    {x:14, y:104, t:'ESQ', a:'end'},
+  ];
+
+  let html = '';
+
+  sides.forEach(side => {
+    const broken = state.powered && state.segments[side.idx].broken;
+    side.segs.forEach((seg, si) => {
+      const p1 = posts[seg[0]], p2 = posts[seg[1]];
+      if (broken && si === 0) {
+        const mx = (p1.x + p2.x) / 2;
+        const my = (p1.y + p2.y) / 2 + 9;
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${mx - 2}" y2="${my}" stroke="#ff3b3b" stroke-width="2" stroke-dasharray="4,3" filter="url(#glow-red)"/>`;
+        html += `<line x1="${p2.x}" y1="${p2.y}" x2="${mx + 4}" y2="${my + 3}" stroke="#ff3b3b" stroke-width="2" stroke-dasharray="4,3" filter="url(#glow-red)"/>`;
+        html += `<circle cx="${mx + 1}" cy="${my + 1}" r="4.5" fill="#ffcc00"/>`;
+        html += `<circle cx="${mx + 1}" cy="${my + 1}" r="8" fill="none" stroke="#ff6600" stroke-width="1.2" opacity="0.5"/>`;
+      } else {
+        const clr = broken ? '#441111' : '#3a7a5a';
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${clr}" stroke-width="1.8"/>`;
+      }
+    });
+  });
+
+  posts.forEach(p => {
+    html += `<circle cx="${p.x}" cy="${p.y}" r="7" fill="#0a1a0a" stroke="#ffc107" stroke-width="1.5"/>`;
+    html += `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#ffc107"/>`;
+  });
+
+  html += `<rect x="14" y="158" width="18" height="14" rx="3" fill="#111" stroke="#2a4a2a"/>`;
+  html += `<text x="23" y="169" text-anchor="middle" font-size="9" fill="#00e676">⚡</text>`;
+  html += `<line x1="23" y1="163" x2="40" y2="170" stroke="#ff4444" stroke-width="1" stroke-dasharray="2,2"/>`;
+
+  labels.forEach((l, i) => {
+    const broken = state.powered && state.segments[i].broken;
+    html += `<text x="${l.x}" y="${l.y}" text-anchor="${l.a}" font-size="7.5" fill="${broken ? '#ff3b3b' : '#2a5a3a'}" font-family="monospace" letter-spacing="1" font-weight="bold">${l.t}</text>`;
+  });
+
+  document.getElementById('svgContent').innerHTML = html;
+}
+
+function addHistory(msg, type) {
+  const now = new Date().toLocaleTimeString('pt-BR');
+  state.history.unshift({ msg, type, time: now });
+  if (state.history.length > 40) state.history.pop();
+  document.getElementById('historyList').innerHTML = state.history.map(h => `
+    <div class="hist-item">
+      <div class="hist-dot ${h.type}"></div>
+      <div class="hist-text">
+        <div class="hist-msg">${h.msg}</div>
+        <div class="hist-time">${h.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── MQTT via HiveMQ público ────────────────────────────────────
+const MQTT_HOST = 'broker.hivemq.com';
+const TOPIC_ID  = 'cerca-eletrica-v1-demo';
+const TOPIC     = `cerca/${TOPIC_ID}/evento`;
+const CLIENT_ID = `app-${Math.random().toString(36).slice(2, 9)}`;
+
+let lastEventTime = null;
+
+function handleEvent(evt) {
+  if (!evt || evt.time === lastEventTime) return;
+  lastEventTime = evt.time;
+
+  if (evt.type === 'wire_break') {
+    const label = evt.wireLabel || '';
+    state.segments.forEach(s => { if (label.startsWith(s.name)) s.broken = true; });
+    addHistory('Rompimento: ' + label, 'alert');
+    state.silenced = false;
+    renderAll();
+    const cur = document.querySelector('.tab.active')?.id;
+    if (cur !== 'tab-status') document.getElementById('navBadge').classList.add('show');
+  }
+
+  if (evt.type === 'reset') {
+    state.segments.forEach(s => s.broken = false);
+    state.silenced = false;
+    addHistory('Cerca restaurada — todos os segmentos OK', 'ok');
+    renderAll();
+  }
+}
+
+function setConnBadge(ok, text) {
+  const b = document.getElementById('connBadge');
+  if (!b) return;
+  if (ok) {
+    b.style.background  = 'rgba(0,230,118,0.08)';
+    b.style.borderColor = 'rgba(0,230,118,0.18)';
+    b.style.color       = 'var(--green)';
+    b.innerHTML = '<div class="conn-dot"></div>' + text;
+  } else {
+    b.style.background  = 'rgba(255,193,7,0.08)';
+    b.style.borderColor = 'rgba(255,193,7,0.2)';
+    b.style.color       = '#ffc107';
+    b.innerHTML = '◌ ' + text;
+  }
+}
+
+function loadMqttLib(cb) {
+  if (window.mqtt) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js';
+  s.onload = cb;
+  document.head.appendChild(s);
+}
+
+// Tenta portas em sequência: 8884 (WSS) → 8083 (WS)
+function connectMQTT(port) {
+  port = port || 8884;
+  const protocol = port === 8083 ? 'ws' : 'wss';
+  const url = `${protocol}://${MQTT_HOST}:${port}/mqtt`;
+
+  setConnBadge(false, `Conectando (porta ${port})...`);
+
+  const client = mqtt.connect(url, {
+    clientId: CLIENT_ID,
+    clean: true,
+    reconnectPeriod: 0,
+    connectTimeout: 8000,
+    protocolVersion: 4,
+  });
+
+  let connected = false;
+
+  client.on('connect', () => {
+    connected = true;
+    client.subscribe(TOPIC, { qos: 1 });
+    client.options.reconnectPeriod = 5000;
+    setConnBadge(true, `MQTT conectado • porta ${port}`);
+    addHistory(`Broker MQTT conectado ✓ porta ${port}`, 'ok');
+  });
+
+  client.on('message', (topic, payload) => {
+    try { handleEvent(JSON.parse(payload.toString())); } catch {}
+  });
+
+  client.on('close', () => {
+    if (!connected) {
+      const next = port === 8884 ? 8083 : null;
+      if (next) {
+        setConnBadge(false, `Porta ${port} falhou — tentando ${next}...`);
+        client.end(true);
+        setTimeout(() => connectMQTT(next), 1000);
+      } else {
+        setConnBadge(false, 'Sem conexão com o broker');
+        addHistory('MQTT: falha em todas as portas', 'alert');
+      }
+    } else {
+      setConnBadge(false, 'Reconectando...');
+    }
+  });
+
+  client.on('error', () => {});
+}
+
+// ── localStorage: fallback mesma aba ──────────────────────────
+window.addEventListener('storage', e => {
+  if (e.key === 'cerca_event' && e.newValue) {
+    try { handleEvent(JSON.parse(e.newValue)); } catch {}
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────
+renderAll();
+addHistory('App iniciado — conectando ao broker...', 'ok');
+loadMqttLib(() => connectMQTT(8884));
+</script>
+</body>
+</html>
