@@ -316,11 +316,90 @@
     from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
     to { transform: translateX(-50%) translateY(0); opacity: 1; }
   }
+  @keyframes border-flash {
+    from { box-shadow: inset 0 0 40px rgba(255,34,34,0.1), 0 0 0 4px var(--red); }
+    to   { box-shadow: inset 0 0 120px rgba(255,34,34,0.25), 0 0 30px rgba(255,34,34,0.5); }
+  }
+
+  @keyframes icon-throb {
+    from { transform: scale(1);    box-shadow: 0 0 20px rgba(255,34,34,0.5); }
+    to   { transform: scale(1.08); box-shadow: 0 0 50px rgba(255,34,34,0.9); }
+  }
 </style>
 </head>
 <body>
 
 <div class="alert-overlay" id="alertOverlay">⚡ ROMPIMENTO DETECTADO!</div>
+
+<!-- Banner de alerta para telão — aparece quando ESP envia rompimento -->
+<div id="alertBanner" style="
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  pointer-events: none;
+  border: 4px solid var(--red);
+  box-shadow: inset 0 0 80px rgba(255,34,34,0.15);
+  animation: border-flash 0.8s ease-in-out infinite alternate;
+">
+  <div style="
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    background: linear-gradient(135deg, rgba(20,0,0,0.97), rgba(10,0,0,0.97));
+    padding: 28px 40px 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    border-bottom: 2px solid var(--red);
+  ">
+    <div style="
+      width: 64px; height: 64px;
+      background: var(--red);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 0 30px rgba(255,34,34,0.7);
+      animation: icon-throb 0.7s ease-in-out infinite alternate;
+      flex-shrink: 0;
+    ">⚠️</div>
+
+    <div style="flex:1">
+      <div style="
+        font-family: 'Orbitron', monospace;
+        font-size: clamp(22px, 3vw, 36px);
+        font-weight: 900;
+        color: var(--red);
+        letter-spacing: 4px;
+        text-shadow: 0 0 20px var(--red);
+        text-transform: uppercase;
+      ">ROMPIMENTO DETECTADO!</div>
+      <div id="bannerSegmento" style="
+        font-family: 'Share Tech Mono', monospace;
+        font-size: clamp(14px, 2vw, 22px);
+        color: #ffaaaa;
+        margin-top: 6px;
+        letter-spacing: 2px;
+      ">—</div>
+    </div>
+
+    <div style="text-align: right; flex-shrink: 0;">
+      <div id="bannerOrigem" style="
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 13px;
+        color: var(--yellow);
+        letter-spacing: 2px;
+        margin-bottom: 4px;
+      ">—</div>
+      <div id="bannerHora" style="
+        font-family: 'Orbitron', monospace;
+        font-size: clamp(20px, 2.5vw, 32px);
+        font-weight: 700;
+        color: var(--red);
+        text-shadow: 0 0 12px var(--red);
+      ">—</div>
+    </div>
+  </div>
+</div>
 
 <header>
   <h1>⚡ Simulador de Cerca Elétrica</h1>
@@ -810,8 +889,21 @@ function connectMQTT(port) {
     mqttOk = true;
     addLog(`MQTT conectado ✓ porta ${port}`, 'ok', new Date().toLocaleTimeString('pt-BR'));
     updateConnStatus(true, port);
-    // Reativa reconexão automática após conectar
     mqttClient.options.reconnectPeriod = 5000;
+
+    // ── Subscreve o tópico para receber eventos do ESP e de outros dispositivos ──
+    mqttClient.subscribe(TOPIC, { qos: 1 }, (err) => {
+      if (!err) addLog('Escutando tópico MQTT ✓', 'ok', new Date().toLocaleTimeString('pt-BR'));
+    });
+  });
+
+  mqttClient.on('message', (topic, payload) => {
+    try {
+      const evt = JSON.parse(payload.toString());
+      // Ignora mensagens que o próprio simulador acabou de enviar (evita eco)
+      if (evt._origem === 'simulador') return;
+      receberEvento(evt);
+    } catch(e) {}
   });
 
   mqttClient.on('close', () => {
@@ -858,6 +950,7 @@ function triggerBreak(idx) {
   updateUI();
   sendAlertToApp(wire);
   showAlertOverlay();
+  showAlertBanner(wire.label, 'Simulador');
 }
 
 function sendAlertToApp(wire) {
@@ -866,19 +959,52 @@ function sendAlertToApp(wire) {
     wireLabel: wire.label,
     time: new Date().toISOString(),
     brokenCount: wires.filter(w => w.broken).length,
+    _origem: 'simulador',   // identificador para evitar eco
   };
   const msg = JSON.stringify(event);
 
-  // MQTT → qualquer dispositivo no mundo com o mesmo tópico
   if (mqttOk && mqttClient) {
     mqttClient.publish(TOPIC, msg, { qos: 1, retain: true });
   } else {
     addLog('MQTT offline — aguarde reconexão', 'alert', new Date().toLocaleTimeString('pt-BR'));
   }
 
-  // localStorage → fallback mesma aba/mesmo navegador
   localStorage.setItem('cerca_event', msg);
   window.dispatchEvent(new StorageEvent('storage', { key: 'cerca_event', newValue: msg }));
+}
+
+// ── Recebe eventos externos (ESP8266 ou outro dispositivo) ────
+let lastExternalTime = null;
+
+function receberEvento(evt) {
+  if (!evt || !evt.type) return;
+  if (evt.time === lastExternalTime) return;
+  lastExternalTime = evt.time;
+
+  const origem = evt.device ? `ESP [${evt.device}]` : 'Externo';
+  const now = new Date().toLocaleTimeString('pt-BR');
+
+  if (evt.type === 'wire_break') {
+    const label = evt.wireLabel || '';
+
+    // Marca os arames correspondentes como rompidos
+    wires.forEach(w => {
+      if (label.startsWith(w.label.split(' — ')[0]) || w.label === label) {
+        w.broken = true;
+      }
+    });
+
+    addLog(`[${origem}] ROMPIMENTO: ${label}`, 'alert', now);
+    updateUI();
+    showAlertBanner(label, origem);
+  }
+
+  if (evt.type === 'reset') {
+    wires.forEach(w => w.broken = false);
+    addLog(`[${origem}] Sistema restaurado`, 'ok', now);
+    updateUI();
+    hideAlertBanner();
+  }
 }
 
 function showAlertOverlay() {
@@ -887,13 +1013,26 @@ function showAlertOverlay() {
   setTimeout(() => el.classList.remove('show'), 3000);
 }
 
+function showAlertBanner(label, origem) {
+  const banner = document.getElementById('alertBanner');
+  document.getElementById('bannerSegmento').textContent = label;
+  document.getElementById('bannerOrigem').textContent   = '⚡ Origem: ' + origem;
+  document.getElementById('bannerHora').textContent     = new Date().toLocaleTimeString('pt-BR');
+  banner.style.display = 'block';
+}
+
+function hideAlertBanner() {
+  document.getElementById('alertBanner').style.display = 'none';
+}
+
 function resetAll() {
   wires.forEach(w => w.broken = false);
   const now = new Date().toLocaleTimeString('pt-BR');
   addLog('Sistema restaurado — todos os arames OK', 'ok', now);
   updateUI();
+  hideAlertBanner();
 
-  const event = { type: 'reset', time: new Date().toISOString() };
+  const event = { type: 'reset', time: new Date().toISOString(), _origem: 'simulador' };
   const msg   = JSON.stringify(event);
 
   if (mqttOk && mqttClient) {
