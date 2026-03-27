@@ -719,7 +719,7 @@
       </div>
 
       <div class="action-row" id="actionRow">
-        <button class="action-btn btn-alarm" id="btnAlarm" onclick="silenceAlarm()">🔔 ALARME</button>
+        <button class="action-btn btn-alarm" id="btnAlarm" onclick="retomarAlarme()">🔔 ALARME</button>
         <button class="action-btn btn-mute" onclick="silenceAlarm()">🔕 MUDO</button>
       </div>
 
@@ -858,8 +858,19 @@ function togglePower() {
 
 function silenceAlarm() {
   state.silenced = true;
+  pararAlarme();
   document.getElementById('btnAlarm').className = 'action-btn btn-alarm silenced';
   if (navigator.vibrate) navigator.vibrate(0);
+}
+
+function retomarAlarme() {
+  if (state.silenced) {
+    // Retoma o alarme se estava silenciado
+    state.silenced = false;
+    document.getElementById('btnAlarm').className = 'action-btn btn-alarm';
+    const hasAlert = state.segments.some(s => s.broken);
+    if (hasAlert) iniciarAlarme();
+  }
 }
 
 function renderAll() {
@@ -907,8 +918,14 @@ function renderAll() {
   renderSegments();
   buildFenceSVG();
 
-  if (hasAlert && !state.silenced && navigator.vibrate) {
-    navigator.vibrate([300, 100, 300, 100, 500]);
+  if (hasAlert && !state.silenced) {
+    // Vibração (mobile)
+    if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]);
+    // Alarme sonoro
+    iniciarAlarme();
+  } else {
+    // Sem alerta ou silenciado — para o alarme
+    pararAlarme();
   }
 }
 
@@ -998,7 +1015,57 @@ function addHistory(msg, type) {
   `).join('');
 }
 
-// ── MQTT via HiveMQ público ────────────────────────────────────
+// ── ALARME SONORO — Web Audio API ─────────────────────────────
+let audioCtx = null;
+let alarmInterval = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+// Toca um bip: frequência (Hz), duração (ms), volume (0-1)
+function bip(freq, duration, volume) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration / 1000);
+  } catch(e) {}
+}
+
+// Padrão de alarme: 3 bips agudos em sequência
+function tocarAlarme() {
+  bip(1200, 120, 0.6);
+  setTimeout(() => bip(1200, 120, 0.6), 180);
+  setTimeout(() => bip(1500, 200, 0.8), 360);
+}
+
+function iniciarAlarme() {
+  if (alarmInterval) return; // já tocando
+  tocarAlarme(); // toca imediatamente
+  alarmInterval = setInterval(tocarAlarme, 2500); // repete a cada 2,5s
+}
+
+function pararAlarme() {
+  if (alarmInterval) {
+    clearInterval(alarmInterval);
+    alarmInterval = null;
+  }
+}
+
+
 const MQTT_HOST = 'broker.hivemq.com';
 const TOPIC_ID  = 'cerca-eletrica-v1-demo';
 const TOPIC     = `cerca/${TOPIC_ID}/evento`;
@@ -1109,6 +1176,14 @@ window.addEventListener('storage', e => {
 });
 
 // ── Init ──────────────────────────────────────────────────────
+// Desbloqueia AudioContext no primeiro toque (exigência de browsers mobile)
+document.addEventListener('touchstart', () => {
+  try { getAudioCtx().resume(); } catch(e) {}
+}, { once: true });
+document.addEventListener('click', () => {
+  try { getAudioCtx().resume(); } catch(e) {}
+}, { once: true });
+
 renderAll();
 addHistory('App iniciado — conectando ao broker...', 'ok');
 loadMqttLib(() => connectMQTT(8884));
